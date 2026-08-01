@@ -85,7 +85,9 @@ input{font-family:inherit;}
 .screens{position:relative;flex:1;min-height:0;}
 .app-screen{position:absolute;inset:0;display:none;flex-direction:column;background:var(--color-bg);}
 .app-screen.active{display:flex;}
-.app-content{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:var(--space-4) var(--space-4) calc(var(--space-4) + 80px);} /* ⭐1 C1/E2 FAB 避让：底部留出 80px + 16px */
+.app-content{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 var(--space-4) calc(var(--space-4) + 80px);} /* ⭐F1(v4) 去掉 padding-top(原16px)：sticky 元素需直接挂在滚动容器上，padding-top 会导致容器内壁顶部有偏移、吸顶元素无法贴顶 */
+/* ⭐F1(v4) 各屏首子元素补偿原 padding-top 留下的 16px 间距（所有屏首子均为 div） */
+.app-content > div:first-child{margin-top:var(--space-4);}
 .app-content::-webkit-scrollbar{width:0;}
 
 /* ============ App 头部 ============ */
@@ -173,7 +175,7 @@ input{font-family:inherit;}
   padding:2px var(--space-2);border-radius:var(--radius-full);
 }
 .stored-card .name{font-size:16px;font-weight:600;}
-.stored-card .valid{font-size:12px;opacity:.8;}
+.stored-card .valid{font-size:12px;opacity:1;} /* ⭐F3 渐变卡上有效期白字不透明 */
 .stored-card .balance-label{font-size:12px;opacity:.8;margin-bottom:2px;}
 
 /* ============ 流水项 ============ */
@@ -194,7 +196,7 @@ input{font-family:inherit;}
 
 /* ============ 列表分组 ============ */
 .group-header{
-  position:sticky;top:0;z-index:2;
+  position:sticky;top:0;z-index:2; /* ⭐F1(v4) 直接挂在 .app-content 上：容器本身是滚动祖先，sticky 生效 */
   background:var(--color-bg);
   display:flex;align-items:center;justify-content:space-between;
   padding:var(--space-3) var(--space-4); /* ⭐2 A6/C4 与 group-card(16px) 水平对齐 */
@@ -229,6 +231,7 @@ input{font-family:inherit;}
   border-radius:var(--radius-full);padding:0 var(--space-4);
   font-size:13px;font-weight:500;color:var(--color-text-secondary);
   display:flex;align-items:center;
+  white-space:nowrap;flex:none; /* ⭐F2 分段文字禁止换行（报表排行等窄空间） */
 }
 .segmented button.active{background:var(--color-bg);box-shadow:var(--shadow-xs);color:var(--color-primary);font-weight:600;}
 
@@ -324,6 +327,9 @@ input{font-family:inherit;}
   min-height:200px;
 }
 .chart-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-3);}
+/* ⭐F2 消费排行头改纵向两行：标题独占一行，分段右对齐，358px 内不换行 */
+#ranking-card .chart-head{flex-direction:column;align-items:stretch;gap:var(--space-2);}
+#ranking-seg{display:inline-flex;align-self:flex-end;} /* ⭐v5 D 分段容器贴合内容宽度、右对齐（inline-flex 收缩包裹 4 按钮，align-self:flex-end 在 stretch 上下文中右对齐） */
 .legend{display:flex;gap:var(--space-3);font-size:12px;color:var(--color-text-secondary);}
 .legend i{display:inline-block;width:8px;height:8px;border-radius:var(--radius-full);margin-right:4px;vertical-align:middle;}
 .donut-wrap{position:relative;display:flex;align-items:center;justify-content:center;padding:var(--space-2) 0;}
@@ -628,7 +634,7 @@ input{font-family:inherit;}
     <!-- ============ ② 记账 Sheet ============ -->
     <div class="sheet sheet--bottom" id="sheet-record">
       <div class="sheet-handle"></div>
-      <div class="sheet-head"><div class="h1">记一笔</div>
+      <div class="sheet-head"><div class="h1" id="record-sheet-title">记一笔</div>
         <button class="icon-btn" data-close aria-label="关闭">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
         </button>
@@ -646,6 +652,7 @@ input{font-family:inherit;}
           <button class="chip" data-v="购物">购物</button>
           <button class="chip" data-v="居家">居家</button>
           <button class="chip" data-v="工资">工资</button>
+          <button class="chip" data-v="周期">周期</button> <!-- ⭐E1 编辑房贷/话费等周期项时类别可对应 -->
           <button class="chip" data-v="其他">其他</button>
         </div>
         <div class="field-label">账户 / 卡片</div>
@@ -737,6 +744,7 @@ input{font-family:inherit;}
           <span class="vl">有效期</span>
           <span class="vr"><span id="card-detail-valid"></span><span class="edit-link" id="card-edit-valid">编辑</span></span>
         </div>
+        <div style="margin-top:var(--space-3)"><button class="btn btn-ghost" id="card-edit" style="border-width:1.5px;height:42px">编辑卡片</button></div> <!-- ⭐E3 卡片编辑入口 -->
         <div class="field-label">消费记录</div>
         <div class="group-card" id="card-detail-flow"></div>
       </div>
@@ -834,6 +842,72 @@ input{font-family:inherit;}
       </div>
     </div>
 
+    <!-- ============ ③ 周期支出 编辑 Sheet ============ -->
+    <div class="sheet sheet--bottom sub-sheet" id="sheet-periodic-edit">
+      <div class="sheet-handle"></div>
+      <div class="sheet-head"><div class="h1">编辑周期支出</div>
+        <button class="icon-btn" data-close aria-label="关闭">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+      <div class="sheet-body">
+        <div class="field-label">名称</div>
+        <input class="ledger-input" id="pedit-name" type="text" placeholder="如：房贷" />
+        <div class="field-label">每期金额</div>
+        <input class="record-amount" id="pedit-amount" value="¥0.00" inputmode="decimal" />
+        <div id="pedit-freq-wrap">
+          <div class="field-label">周期</div>
+          <div class="chips" id="pedit-freq">
+            <button class="chip" data-v="月付">月付</button>
+            <button class="chip" data-v="周付">周付</button>
+            <button class="chip" data-v="季付">季付</button>
+            <button class="chip" data-v="年付">年付</button>
+          </div>
+        </div>
+        <div id="pedit-periods">
+          <div class="field-label">已还期数</div>
+          <input class="ledger-input" id="pedit-paid" type="number" inputmode="numeric" />
+          <div class="field-label">总期数</div>
+          <input class="ledger-input" id="pedit-total" type="number" inputmode="numeric" />
+          <div class="field-label">剩余金额</div>
+          <input class="ledger-input" id="pedit-remain" type="number" inputmode="decimal" placeholder="0.00" />
+        </div>
+      </div>
+      <div class="sheet-foot">
+        <button class="btn btn-secondary" data-close>取消</button>
+        <button class="btn btn-primary" id="pedit-save">保存</button>
+      </div>
+    </div>
+
+    <!-- ============ ④ 卡片 编辑 Sheet ============ -->
+    <div class="sheet sheet--bottom sub-sheet" id="sheet-card-edit">
+      <div class="sheet-handle"></div>
+      <div class="sheet-head"><div class="h1">编辑卡片</div>
+        <button class="icon-btn" data-close aria-label="关闭">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+      <div class="sheet-body">
+        <div class="field-label">卡片类型</div>
+        <div class="chips" id="cardedit-type">
+          <button class="chip" data-v="储蓄卡">银行卡</button>
+          <button class="chip" data-v="购物卡">购物卡</button>
+          <button class="chip" data-v="服务卡">服务卡</button>
+          <button class="chip" data-v="自定义">自定义</button>
+        </div>
+        <div class="field-label">卡片名称</div>
+        <input class="ledger-input" id="cardedit-name" type="text" placeholder="如：咖啡储值卡" />
+        <div class="field-label">余额</div>
+        <input class="ledger-input" id="cardedit-balance" type="number" inputmode="decimal" placeholder="0.00" />
+        <div class="field-label">有效期</div>
+        <button class="btn btn-ghost" id="cardedit-valid-btn" style="border-width:1.5px;height:42px">编辑有效期</button>
+      </div>
+      <div class="sheet-foot">
+        <button class="btn btn-secondary" data-close>取消</button>
+        <button class="btn btn-primary" id="cardedit-save">保存</button>
+      </div>
+    </div>
+
     <!-- ============ Toast ============ -->
     <div class="toast" id="toast">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5 10 17l9-10"/></svg>
@@ -889,11 +963,11 @@ function fmt(n){ return '¥' + Number(n).toLocaleString('zh-CN',{minimumFraction
 const homeData = [
   {group:'今天', icon:'mortgage', cls:'liability', cat:'房贷月供', remark:'6月月供·剩余本金¥1,024,300', time:'08:30', amount:6800, catKey:'周期', timeGroup:'本周'},
   {group:'今天', icon:'food',     cls:'expense',   cat:'午餐',      remark:'公司附近·黄焖鸡',          time:'12:15', amount:38,   catKey:'餐饮', timeGroup:'本周'},
-  {group:'今天', icon:'card',     cls:'balance',   cat:'银座购物卡消费', remark:'超市',                time:'18:40', amount:200,  catKey:'购物', timeGroup:'本周'},
+  {group:'今天', icon:'card',     cls:'balance',   cat:'银座购物卡消费', remark:'超市',                time:'18:40', amount:200,  catKey:'购物', timeGroup:'本周', acc:'银座购物卡'},
   {group:'今天', icon:'salary',   cls:'income',    cat:'工资收入',   remark:'6月薪资',                time:'10:00', amount:23500,catKey:'工资', timeGroup:'本周'},
   {group:'昨天', icon:'parking',  cls:'expense',   cat:'停车费',     remark:'写字楼地下',             time:'09:12', amount:15,   catKey:'交通', timeGroup:'本周'},
   {group:'昨天', icon:'phone',    cls:'liability', cat:'电话费',     remark:'套餐月付',              time:'20:05', amount:99,   catKey:'周期', timeGroup:'本周'},
-  {group:'昨天', icon:'scissors', cls:'balance',   cat:'理发卡消费',  remark:'洗剪吹',               time:'15:30', amount:50,   catKey:'购物', timeGroup:'本周'},
+  {group:'昨天', icon:'scissors', cls:'balance',   cat:'理发卡消费',  remark:'洗剪吹',               time:'15:30', amount:50,   catKey:'购物', timeGroup:'本周', acc:'理发卡'},
   {group:'更早', icon:'car',      cls:'liability', cat:'车贷月供',   remark:'剩余 24 期',            time:'06-15', amount:3200, catKey:'周期', timeGroup:'本月'},
   {group:'更早', icon:'cart',     cls:'expense',   cat:'超市',       remark:'日用品',               time:'06-12', amount:156.30,catKey:'居家', timeGroup:'本月'}
 ];
@@ -933,8 +1007,9 @@ const expenseRankingData = [
 ];
 
 /* ============ 渲染：首页流水 ============ */
-function flowItemHTML(t){
-  return '<div class="flow-item">'
+/* ⭐E1 流水项带 data-flow-idx，点击可打开记账 Sheet 编辑 */
+function flowItemHTML(t,i){
+  return '<div class="flow-item" data-flow-idx="'+(i==null?-1:i)+'" style="cursor:pointer">'
     + '<div class="badge badge--'+t.cls+'">'+icon(t.icon,20)+'</div>'
     + '<div class="flow-main"><div class="cat">'+t.cat+'</div>'
     +   '<div class="sub">'+t.remark+' · '+t.time+'</div></div>'
@@ -944,24 +1019,28 @@ function flowItemHTML(t){
 function renderHome(){
   const order = ['今天','昨天','更早'];
   const groups = {};
-  homeData.forEach(t=>{ (groups[t.group]=groups[t.group]||[]).push(t); });
+  homeData.forEach((t,i)=>{ (groups[t.group]=groups[t.group]||[]).push({t,i}); });
   let html = '';
   order.forEach(g=>{
     if(!groups[g]) return;
     const list = groups[g];
     // ⭐10 F1 组总额只算支出（剔除工资收入）
-    const sum = list.filter(t=>t.cls==='expense'||t.cls==='liability'||t.cls==='balance').reduce((a,b)=>a+b.amount,0);
+    const sum = list.filter(x=>x.t.cls==='expense'||x.t.cls==='liability'||x.t.cls==='balance').reduce((a,b)=>a+b.t.amount,0);
     // ⭐3 A4/C3 组总额加 .amount 类（tnum + 右对齐 + 与卡片右缘对齐）
     html += '<div class="group-header"><span>'+g+'</span><span class="amount amount-md">'+fmt(sum)+'</span></div>';
-    html += '<div class="group-card">'+ list.map(flowItemHTML).join('') +'</div>';
+    html += '<div class="group-card">'+ list.map(x=>flowItemHTML(x.t,x.i)).join('') +'</div>';
   });
-  document.getElementById('home-list').innerHTML = html;
+  // ⭐F1(v4) 组头/组卡直接挂到 .app-content 下，使 sticky 的 containing block = 滚动容器本身，贴顶生效
+  const host = document.querySelector('#screen-home .app-content');
+  host.querySelectorAll('.group-header,.group-card').forEach(x=>x.remove());
+  host.insertAdjacentHTML('beforeend', html);
 }
 
 /* ============ 渲染：卡片 ============ */
 function validDisplay(c){
-  if(c.valid==null) return '<span style="color:var(--color-primary)">永久有效</span>';
-  return '<span style="color:var(--color-text-secondary)">有效期至 '+c.valid+'</span>';
+  /* ⭐F3 渐变卡底上有效期一律白字（含微透明），保证可读；详情 Sheet 白底处的有效期行走 #card-detail-valid，不受影响 */
+  if(c.valid==null) return '<span style="color:#fff">永久有效</span>';
+  return '<span style="color:rgba(255,255,255,.92)">有效期至 '+c.valid+'</span>';
 }
 function renderCards(){
   document.getElementById('cards-list').innerHTML = cardsData.map((c,i)=>
@@ -1042,20 +1121,23 @@ function renderSearch(){
     return true;
   });
   document.getElementById('search-count').textContent = res.length;
-  const el = document.getElementById('search-list');
+  // ⭐F1(v4) 清空旧组并共用 .app-content 作为渲染宿主
+  const host = document.querySelector('#screen-search .app-content');
+  host.querySelectorAll('.group-header,.group-card').forEach(x=>x.remove());
+  document.getElementById('search-list').innerHTML = '';
   if(!res.length){
-    el.innerHTML = '<div class="empty"><div class="ic"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13l3-8h10l3 8v6H4z"/><path d="M4 13h5l1 2h4l1-2h5"/></svg></div>'
+    document.getElementById('search-list').innerHTML = '<div class="empty"><div class="ic"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13l3-8h10l3 8v6H4z"/><path d="M4 13h5l1 2h4l1-2h5"/></svg></div>'
       + '<div class="t">没有找到记录</div><div class="d">试着调整筛选条件，或更换关键词重新搜索。</div></div>';
     return;
   }
-  const groups={}; res.forEach(t=>{(groups[t.group]=groups[t.group]||[]).push(t);});
+  const groups={}; res.forEach((t,i)=>{ const g=t.group; (groups[g]=groups[g]||[]).push({t,i}); });
   let html='';
   ['今天','昨天','更早'].forEach(g=>{
     if(!groups[g])return;
     html+='<div class="group-header"><span>'+g+'</span></div>';
-    html+='<div class="group-card">'+groups[g].map(flowItemHTML).join('')+'</div>';
+    html+='<div class="group-card">'+groups[g].map(x=>flowItemHTML(x.t,x.i)).join('')+'</div>';
   });
-  el.innerHTML=html;
+  host.insertAdjacentHTML('beforeend', html);
 }
 
 /* ============ 渲染：消费排行 ============ */
@@ -1119,6 +1201,8 @@ function closeSheet(){
   resetRecordSheet(); // ⭐5 A2/D2 关闭时统一重置记账表单
 }
 /* ⭐5 A2/D2 记账表单统一重置：金额→¥0.00、type→支出、类别→餐饮、账户→现金、图片→upload、备注清空 */
+/* ⭐E1 同时恢复编辑态：editingFlowIdx=-1、标题回"记一笔" */
+let editingFlowIdx = -1;
 function resetRecordSheet(){
   document.getElementById('record-amount').value='¥0.00';
   document.querySelectorAll('#record-type button').forEach(b=>b.classList.toggle('active', b.dataset.type==='expense'));
@@ -1129,6 +1213,31 @@ function resetRecordSheet(){
   document.getElementById('record-note').value='';
   document.getElementById('img-upload').style.display='flex';
   document.getElementById('img-preview').style.display='none';
+  editingFlowIdx = -1;
+  const t = document.getElementById('record-sheet-title'); if(t) t.textContent='记一笔';
+}
+
+/* ⭐E1/E2/E3 通用：chips 单选 helper（先清 active，再对 data-v===value 加 active；无匹配则激活第一个兜底） */
+function setChipActive(containerId, value){
+  const c = document.getElementById(containerId);
+  if(!c) return;
+  let found = null;
+  c.querySelectorAll('.chip').forEach(x=>{
+    const on = (x.dataset.v===value);
+    x.classList.toggle('active', on);
+    if(on) found = x;
+  });
+  if(!found){ const first=c.querySelector('.chip'); if(first) first.classList.add('active'); }
+}
+
+/* ⭐E1/E2 共享：金额输入格式化（¥ + 千分位） */
+function formatAmountInput(el){
+  let v = el.value.replace(/[^\d.]/g,'');
+  const parts = v.split('.');
+  if(parts.length>2) v = parts[0]+'.'+parts.slice(1).join('');
+  if(v===''||v==='.'){ el.value='¥0.00'; return; }
+  const num = parseFloat(v)||0;
+  el.value = '¥'+num.toLocaleString('zh-CN',{minimumFractionDigits:2,maximumFractionDigits:2});
 }
 
 /* ============ Toast ============ */
@@ -1196,14 +1305,8 @@ singleChip(document.getElementById('record-acc'));
 // 金额输入处理
 const amountInput=document.getElementById('record-amount');
 amountInput.addEventListener('focus',()=>{ if(amountInput.value==='¥0.00') amountInput.value='¥'; });
-amountInput.addEventListener('input',()=>{
-  let v=amountInput.value.replace(/[^\d.]/g,'');
-  const parts=v.split('.');
-  if(parts.length>2) v=parts[0]+'.'+parts.slice(1).join('');
-  if(v===''||v==='.'){ amountInput.value='¥0.00'; return; }
-  const num=parseFloat(v)||0;
-  amountInput.value='¥'+num.toLocaleString('zh-CN',{minimumFractionDigits:2,maximumFractionDigits:2});
-});
+amountInput.addEventListener('input',()=>formatAmountInput(amountInput));
+document.getElementById('pedit-amount').addEventListener('input',()=>formatAmountInput(document.getElementById('pedit-amount')));
 // 图片上传 mock
 document.getElementById('img-upload').addEventListener('click',()=>{
   document.getElementById('img-upload').style.display='none';
@@ -1214,7 +1317,7 @@ document.getElementById('img-remove').addEventListener('click',(e)=>{
   document.getElementById('img-preview').style.display='none';
   document.getElementById('img-upload').style.display='flex';
 });
-// 保存记账
+// 保存记账（⭐E1 编辑模式：editingFlowIdx>=0 时更新对应条目，否则走新增）
 document.getElementById('record-save').addEventListener('click',()=>{
   const type=document.querySelector('#record-type button.active').dataset.type;
   const cat=document.querySelector('#record-cat .chip.active').dataset.v;
@@ -1222,13 +1325,61 @@ document.getElementById('record-save').addEventListener('click',()=>{
   const note=document.getElementById('record-note').value.trim();
   const num=parseFloat(amountInput.value.replace(/[^\d.]/g,''))||0;
   const cls = type==='income' ? 'income' : (acc.includes('卡') ? 'balance' : 'expense');
-  homeData.unshift({group:'今天', icon: type==='income'?'salary':'food', cls, cat: cat+(type==='income'?'收入':''), remark:(acc!=='现金'?acc:'')+(note?('·'+note):''), time:'刚刚', amount:num, catKey: cat, timeGroup:'本周'});
+  const hasImg = document.getElementById('img-preview').style.display!=='none';
+  if(editingFlowIdx>=0){
+    const t=homeData[editingFlowIdx];
+    t.amount=num; t.cls=cls;
+    t.cat = cat + (type==='income'?'收入':'');
+    t.catKey=cat; t.acc=acc;
+    t.remark = note || t.remark; // 未改动备注则保留原文
+    t.hasImg = hasImg;
+    renderHome(); renderSearch();
+    resetRecordSheet();
+    closeSheet();
+    document.getElementById('fab').classList.remove('hidden');
+    showToast('已更新');
+    return;
+  }
+  homeData.unshift({group:'今天', icon: type==='income'?'salary':'food', cls, cat: cat+(type==='income'?'收入':''), remark:(acc!=='现金'?acc:'')+(note?('·'+note):''), time:'刚刚', amount:num, catKey: cat, timeGroup:'本周', acc, hasImg});
   renderHome();
   // ⭐5 A2/D2 保存成功后统一重置表单
   resetRecordSheet();
   closeSheet();
   document.getElementById('fab').classList.remove('hidden');
   showToast('已记一笔 '+fmt(num));
+});
+
+/* ⭐E1 流水项点击 → 复用记账 Sheet 编辑（首页 + 搜索列表事件委托，按屏 scope 到 .app-content） */
+function openRecordEdit(idx){
+  const t = homeData[idx];
+  editingFlowIdx = idx;
+  document.getElementById('record-sheet-title').textContent = '编辑这笔';
+  document.getElementById('record-amount').value = fmt(t.amount);
+  // 类型：income 高亮"收入"，其余（支出/周期/卡片消费）高亮"支出"
+  const isIncome = t.cls==='income';
+  document.querySelectorAll('#record-type button').forEach(b=>b.classList.toggle('active', (b.dataset.type==='income')===isIncome));
+  // 类别 / 账户
+  setChipActive('record-cat', t.catKey);
+  setChipActive('record-acc', t.acc || '现金');
+  // 备注
+  document.getElementById('record-note').value = t.remark || '';
+  // 图片：原记录带图则显示预览，否则显示上传
+  if(t.hasImg){
+    document.getElementById('img-upload').style.display='none';
+    document.getElementById('img-preview').style.display='flex';
+  } else {
+    document.getElementById('img-upload').style.display='flex';
+    document.getElementById('img-preview').style.display='none';
+  }
+  document.getElementById('fab').classList.add('hidden');
+  openSheet(document.getElementById('sheet-record'));
+}
+['screen-home','screen-search'].forEach(screenId=>{
+  document.querySelector('#'+screenId+' .app-content').addEventListener('click',e=>{
+    const it = e.target.closest('[data-flow-idx]'); if(!it) return;
+    const i = +it.dataset.flowIdx; if(i<0 || !homeData[i]) return;
+    openRecordEdit(i);
+  });
 });
 
 // ⭐4 A1/D1 报表分段：周/月/季/年 四套自洽 mock 数据（环形弧长=支出占比、汇总=收入-支出、分类合计=支出总额）
@@ -1325,17 +1476,18 @@ document.getElementById('cards-list').addEventListener('click',e=>{
 });
 document.getElementById('card-recharge').addEventListener('click',()=>{ closeSheet(); showToast('充值入口（示例）'); });
 document.getElementById('card-consume').addEventListener('click',()=>{ closeSheet(); showToast('消费入口（示例）'); });
-// 卡片有效期编辑
-document.getElementById('card-edit-valid').addEventListener('click',()=>{
-  closeSheet();
-  const c = cardsData[cardDetailIdx];
+// 卡片有效期编辑（⭐E3 预填逻辑抽为共享 helper，卡片详情与卡片编辑 Sheet 复用）
+function openValidityEditor(idx){
+  const c = cardsData[idx];
   document.getElementById('vv-mm').value = c.valid ? c.valid.split('/')[0] : '';
   document.getElementById('vv-yy').value = c.valid ? c.valid.split('/')[1] : '';
   const toggle = document.getElementById('vv-toggle');
   if(c.valid==null){ toggle.classList.add('on'); document.getElementById('vv-mm').disabled=true; document.getElementById('vv-yy').disabled=true; document.getElementById('vv-mm').style.background='var(--color-surface-2)'; document.getElementById('vv-yy').style.background='var(--color-surface-2)'; document.getElementById('vv-perm-label').textContent='永久有效'; }
   else { toggle.classList.remove('on'); document.getElementById('vv-mm').disabled=false; document.getElementById('vv-yy').disabled=false; document.getElementById('vv-mm').style.background=''; document.getElementById('vv-yy').style.background=''; document.getElementById('vv-perm-label').textContent='关闭'; }
   openSheet(document.getElementById('sheet-card-validity'));
-});
+}
+document.getElementById('card-edit-valid').addEventListener('click',()=>{ closeSheet(); openValidityEditor(cardDetailIdx); });
+document.getElementById('cardedit-valid-btn').addEventListener('click',()=>{ closeSheet(); openValidityEditor(cardDetailIdx); });
 document.getElementById('vv-toggle').addEventListener('click',function(){
   this.classList.toggle('on');
   const on = this.classList.contains('on');
@@ -1365,6 +1517,35 @@ document.getElementById('addcard-save').addEventListener('click',()=>{
   showToast('已添加卡片');
 });
 
+// ⭐E3 卡片编辑：入口（卡片详情"编辑卡片"）+ 预填 + 保存
+let cardEditIdx = -1;
+singleChip(document.getElementById('cardedit-type'));
+singleChip(document.getElementById('pedit-freq'));
+function openCardEdit(idx){
+  const c = cardsData[idx];
+  cardEditIdx = idx;
+  document.getElementById('cardedit-name').value = c.name;
+  setChipActive('cardedit-type', c.type);
+  document.getElementById('cardedit-balance').value = c.balance;
+  openSheet(document.getElementById('sheet-card-edit'));
+}
+document.getElementById('card-edit').addEventListener('click',()=>{
+  if(cardDetailIdx<0) return;
+  closeSheet();
+  openCardEdit(cardDetailIdx);
+});
+document.getElementById('cardedit-save').addEventListener('click',()=>{
+  if(cardEditIdx<0) return;
+  const c = cardsData[cardEditIdx];
+  c.type = document.querySelector('#cardedit-type .chip.active').dataset.v;
+  c.name = (document.getElementById('cardedit-name').value || c.name).trim();
+  c.balance = parseFloat(document.getElementById('cardedit-balance').value) || 0;
+  c.icon = c.type==='购物卡' ? 'card' : (c.type==='服务卡' ? 'scissors' : (c.type==='自定义' ? 'coffee' : 'bank'));
+  renderCards();
+  closeSheet();
+  showToast('已更新');
+});
+
 // 周期性状态筛选
 document.querySelectorAll('#periodic-state-chips .chip').forEach(c=>{
   c.addEventListener('click',()=>{
@@ -1386,6 +1567,7 @@ document.getElementById('periodic-list').addEventListener('click',e=>{
     body='<div class="card"><div class="flow-item" style="padding:0"><div class="badge badge--liability">'+icon(p.name==='停车费'?'parking':'phone',20)+'</div>'
       + '<div class="flow-main"><div class="cat">'+p.name+'</div><div class="sub">'+p.note+'</div></div>'
       + '<div class="flow-amount amount amount-lg amount--liability">'+fmt(p.per)+'</div></div></div>'
+      + '<div style="margin-top:var(--space-3)"><button class="btn btn-ghost" id="periodic-edit" style="border-width:1.5px;height:42px">编辑</button></div>' /* ⭐E2 周期项（月付类）编辑入口 */
       + '<div class="field-label">扣款方式</div><div class="card">按月自动扣款，无需手动操作</div>';
   } else if(p.state==='已结清'){
     body='<div class="card" style="opacity:.7"><div class="flow-item" style="padding:0"><div class="badge badge--done">'+icon(p.name==='装修贷'?'building':'car',20)+'</div>'
@@ -1395,14 +1577,17 @@ document.getElementById('periodic-list').addEventListener('click',e=>{
       + '<div class="progress-track"><div class="progress-fill progress-fill--done" style="width:100%"></div></div></div></div>'
       + '<div class="field-label">每期金额</div><div class="card"><div class="amount amount-lg" style="color:var(--color-text-disabled)">'+fmt(p.per)+'</div></div>'
       + '<div class="field-label">起始日</div><div class="card body">'+p.start+'</div>'
-      + '<div class="field-label">已还期数</div><div class="card body">'+p.paid+' / '+p.total+' 期（已全部还清）</div>';
+      + '<div class="field-label">已还期数</div><div class="card body">'+p.paid+' / '+p.total+' 期（已全部还清）</div>'
+      + '<div style="margin-top:var(--space-3)"><button class="btn btn-ghost" id="periodic-edit" style="border-width:1.5px;height:42px">编辑</button></div>'; /* ⭐E2 已结清项也可编辑（改已还期数可回到进行中） */
   } else {
     const pct=Math.round(p.paid/p.total*100);
     body='<div class="card"><div class="progress-wrap">'
       + '<div class="progress-top"><span>已还 '+p.paid+' / 共 '+p.total+' 期</span><span>'+pct+'%</span></div>'
       + '<div class="progress-track"><div class="progress-fill" style="width:'+pct+'%"></div></div>'
       + '<div class="progress-bottom"><span class="label">剩余金额</span><span class="amount amount-md amount--liability">'+fmt(p.remain)+'</span></div></div></div>'
-      + '<div style="margin-top:var(--space-3)"><button class="btn btn-ghost" id="prepay-btn" style="border-width:1.5px;height:42px">提前还款</button></div>'
+      + '<div style="margin-top:var(--space-3);display:flex;gap:var(--space-3)">' /* ⭐E2 编辑 + 提前还款 并排 */
+      + '<button class="btn btn-ghost" id="periodic-edit" style="border-width:1.5px;height:42px">编辑</button>'
+      + '<button class="btn btn-ghost" id="prepay-btn" style="border-width:1.5px;height:42px">提前还款</button></div>'
       + '<div class="field-label">每期金额</div><div class="card"><div class="amount amount-lg amount--liability">'+fmt(p.per)+'</div></div>'
       + '<div class="field-label">起始日</div><div class="card body">'+p.start+'</div>'
       + '<div class="field-label">剩余期数</div><div class="card body">'+(p.total-p.paid)+' 期</div>'
@@ -1410,30 +1595,78 @@ document.getElementById('periodic-list').addEventListener('click',e=>{
   }
   document.getElementById('periodic-detail-body').innerHTML=body;
   openSheet(document.getElementById('sheet-periodic'));
-  // 绑提前还款按钮
+  // 绑提前还款按钮（若存在）+ 编辑按钮（⭐E2 总是绑定：已结清/freq 分支无 prepay-btn 也要绑 periodic-edit）
   setTimeout(()=>{
-    const pb=document.getElementById('prepay-btn'); if(!pb)return;
-    pb.addEventListener('click',()=>{
-      closeSheet();
-      const pp=periodicData[periodicDetailIdx];
-      document.getElementById('prepay-hint').textContent = '剩余本金 '+fmt(pp.remain) + '，输入还款金额后将扣除';
-      document.getElementById('prepay-after').textContent = fmt(pp.remain);
-      document.getElementById('prepay-amount').value = '';
-      openSheet(document.getElementById('sheet-prepay'));
-    });
+    const pb=document.getElementById('prepay-btn');
+    if(pb){
+      pb.addEventListener('click',()=>{
+        closeSheet();
+        const pp=periodicData[periodicDetailIdx];
+        document.getElementById('prepay-hint').textContent = '剩余本金 '+fmt(pp.remain) + '，输入还款金额后将扣除';
+        document.getElementById('prepay-after').textContent = fmt(pp.remain);
+        document.getElementById('prepay-amount').value = '';
+        openSheet(document.getElementById('sheet-prepay'));
+      });
+    }
+    // ⭐E2 编辑按钮 → 打开编辑周期支出 Sheet（已结清/freq/进行中 三个分支都要绑）
+    const pe=document.getElementById('periodic-edit');
+    if(pe) pe.addEventListener('click',()=>{ closeSheet(); openPeriodicEdit(periodicDetailIdx); });
   },50);
+});
+/* ⭐E2 周期支出编辑：预填 + 打开编辑 Sheet */
+let periodicEditIdx = -1;
+function openPeriodicEdit(idx){
+  const p = periodicData[idx];
+  periodicEditIdx = idx;
+  document.getElementById('pedit-name').value = p.name;
+  document.getElementById('pedit-amount').value = fmt(p.per);
+  const freqWrap = document.getElementById('pedit-freq-wrap');
+  const periods = document.getElementById('pedit-periods');
+  if(p.freq){
+    freqWrap.style.display = 'block';
+    periods.style.display = 'none';
+    setChipActive('pedit-freq', p.freq);
+  } else {
+    freqWrap.style.display = 'none';
+    periods.style.display = 'block';
+    document.getElementById('pedit-paid').value = p.paid;
+    document.getElementById('pedit-total').value = p.total;
+    document.getElementById('pedit-remain').value = p.remain;
+  }
+  openSheet(document.getElementById('sheet-periodic-edit'));
+}
+/* ⭐E2 保存周期支出编辑 */
+document.getElementById('pedit-save').addEventListener('click',()=>{
+  if(periodicEditIdx<0) return;
+  const p = periodicData[periodicEditIdx];
+  p.name = (document.getElementById('pedit-name').value || p.name).trim();
+  p.per = parseFloat(document.getElementById('pedit-amount').value.replace(/[^\d.]/g,'')) || 0;
+  if(p.freq){
+    // 月付类：只改名称/金额/周期
+    p.freq = document.querySelector('#pedit-freq .chip.active').dataset.v;
+  } else {
+    // 房贷/车贷类：改期数与剩余金额；已还满则结清，未还满自动回到进行中
+    p.paid = parseInt(document.getElementById('pedit-paid').value,10) || 0;
+    p.total = parseInt(document.getElementById('pedit-total').value,10) || p.total;
+    p.remain = parseFloat(document.getElementById('pedit-remain').value) || 0;
+    if(p.paid >= p.total){ p.paid = p.total; p.remain = 0; p.state='已结清'; p.next='—'; }
+    else { p.state='进行中'; if(p.next==='—') p.next='07-01'; }
+  }
+  renderPeriodic();
+  closeSheet();
+  showToast('已更新');
 });
 // 提前还款确认
 document.getElementById('prepay-amount').addEventListener('input',()=>{
-  const pp=periodicData[periodicDetailIdx]; if(!pp || periodDetailIdx<0) return;
+  const pp=periodicData[periodicDetailIdx]; if(!pp || periodicDetailIdx<0) return;
   const amt = parseFloat(document.getElementById('prepay-amount').value)||0;
   const after = Math.max(0, pp.remain - amt);
   document.getElementById('prepay-after').textContent = fmt(after);
   document.getElementById('prepay-hint').textContent = '剩余本金 '+fmt(pp.remain)+' → '+fmt(after);
 });
 document.getElementById('prepay-confirm').addEventListener('click',()=>{
-  if(periodDetailIdx<0) return;
-  const pp=periodicData[periodDetailIdx];
+  if(periodicDetailIdx<0) return;
+  const pp=periodicData[periodicDetailIdx];
   const amt = parseFloat(document.getElementById('prepay-amount').value)||0;
   if(amt<=0){ showToast('请输入还款金额'); return; }
   pp.remain = Math.max(0, pp.remain - amt);
