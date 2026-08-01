@@ -441,57 +441,38 @@ input{font-family:inherit;}
             </div>
           </div>
 
-          <div class="chart-card">
-            <div class="chart-head"><div class="h2">收支趋势</div>
-              <div class="legend"><span><i style="background:var(--color-primary)"></i>支出</span><span><i style="background:var(--color-liability)"></i>收入</span></div>
-            </div>
-            <svg viewBox="0 0 320 160" width="100%" height="160" fill="none">
-              <line x1="0" y1="20" x2="320" y2="20" stroke="var(--color-divider)" stroke-width="1"/>
-              <line x1="0" y1="60" x2="320" y2="60" stroke="var(--color-divider)" stroke-width="1"/>
-              <line x1="0" y1="100" x2="320" y2="100" stroke="var(--color-divider)" stroke-width="1"/>
-              <line x1="0" y1="140" x2="320" y2="140" stroke="var(--color-divider)" stroke-width="1"/>
-              <g id="trend-bars" fill="var(--color-primary)">
-                <rect x="14" y="100" width="16" height="40" rx="3"/>
-                <rect x="50" y="70" width="16" height="70" rx="3"/>
-                <rect x="86" y="110" width="16" height="30" rx="3"/>
-                <rect x="122" y="50" width="16" height="90" rx="3"/>
-                <rect x="158" y="85" width="16" height="55" rx="3"/>
-                <rect x="194" y="30" width="16" height="110" rx="3"/>
-                <rect x="230" y="80" width="16" height="60" rx="3"/>
-                <rect x="266" y="40" width="16" height="100" rx="3"/>
-              </g>
-              <polyline id="trend-line" points="22,72 58,58 94,86 130,46 166,64 202,38 238,54 274,42" fill="none" stroke="var(--color-liability)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
+          <!-- ⭐v5 B 汇总卡 2×2：支出/日均支出/比上周支出/收支结余（置顶，收入体现在结余，不单独展示收入格） -->
+          <div class="overview" id="report-summary">
+            <div class="cell"><div class="label caption" id="sum-expense-label">支出</div><div class="amount amount-lg amount--expense" id="sum-expense">¥12,840.00</div></div>
+            <div class="cell"><div class="label caption" id="sum-daily-label">日均支出</div><div class="amount amount-lg amount--expense" id="sum-daily">¥428.00</div></div>
+            <div class="cell"><div class="label caption" id="sum-diff-label">比上月支出</div><div class="amount amount-lg amount--expense" id="sum-diff">↓ 12%</div></div>
+            <div class="cell"><div class="label caption">收支结余</div><div class="amount amount-lg amount--income" id="sum-balance">¥10,660.00</div></div>
           </div>
 
           <div class="section-gap"></div>
+
+          <!-- ⭐v5 C 支出分类构成 环形（4 段：周期负债=liability 橙 + primary 三档深浅，环心总支出自适应） -->
           <div class="chart-card">
-            <div class="chart-head"><div class="h2">支出 / 收入占比</div></div>
+            <div class="chart-head"><div class="h2">支出分类构成</div></div>
             <div class="donut-wrap">
               <svg viewBox="0 0 140 140" width="170" height="170">
                 <circle cx="70" cy="70" r="54" fill="none" stroke="var(--color-divider)" stroke-width="12"/>
-                <circle id="donut-arc-expense" cx="70" cy="70" r="54" fill="none" stroke="var(--color-primary)" stroke-width="12" stroke-dasharray="119.9 339.3" stroke-dashoffset="0" transform="rotate(-90 70 70)"/>
-                <circle id="donut-arc-income" cx="70" cy="70" r="54" fill="none" stroke="var(--color-liability)" stroke-width="12" stroke-dasharray="219.4 339.3" stroke-dashoffset="-119.9" transform="rotate(-90 70 70)"/>
+                <circle id="donut-arc-0" cx="70" cy="70" r="54" fill="none" stroke="var(--color-liability)" stroke-width="12" stroke-dasharray="0 339.3" stroke-dashoffset="0" transform="rotate(-90 70 70)"/>
+                <circle id="donut-arc-1" cx="70" cy="70" r="54" fill="none" stroke="var(--color-primary)" stroke-width="12" stroke-dasharray="0 339.3" stroke-dashoffset="0" transform="rotate(-90 70 70)"/>
+                <circle id="donut-arc-2" cx="70" cy="70" r="54" fill="none" stroke="var(--color-primary)" stroke-width="12" stroke-dasharray="0 339.3" stroke-dashoffset="0" transform="rotate(-90 70 70)"/>
+                <circle id="donut-arc-3" cx="70" cy="70" r="54" fill="none" stroke="var(--color-primary)" stroke-width="12" stroke-dasharray="0 339.3" stroke-dashoffset="0" transform="rotate(-90 70 70)"/>
               </svg>
               <div class="donut-center">
-                <div class="caption" id="donut-label" style="color:var(--color-text-secondary)">本月支出</div>
-                <div class="amount amount-lg amount--expense" id="donut-expense">¥12,840.00</div>
+                <div class="caption" id="donut-label" style="color:var(--color-text-secondary)">本月总支出</div>
+                <div class="amount amount-lg amount--expense" id="donut-total">¥12,840.00</div>
               </div>
             </div>
-            <div class="legend" style="justify-content:center;margin-top:var(--space-2)">
-              <span id="legend-expense"><i style="background:var(--color-primary)"></i>支出 ¥12,840</span>
-              <span id="legend-income"><i style="background:var(--color-liability)"></i>收入 ¥23,500</span>
-            </div>
+            <div class="legend" id="donut-legend" style="justify-content:center;flex-wrap:wrap;margin-top:var(--space-2)"></div>
           </div>
 
           <div class="section-gap"></div>
-          <div class="summary-row">
-            <div class="cell"><div class="l" id="sum-income-label">本月收入</div><div class="amount amount-md amount--income" id="sum-income">¥23,500</div></div>
-            <div class="cell"><div class="l" id="sum-expense-label">本月支出</div><div class="amount amount-md amount--expense" id="sum-expense">¥12,840</div></div>
-            <div class="cell"><div class="l">结余</div><div class="amount amount-md amount--income" id="sum-balance">¥10,660</div></div>
-          </div>
 
-          <div class="section-gap"></div>
+          <!-- 分类明细（占比条，与环形分类构成互补，保留） -->
           <div class="section-title">分类明细</div>
           <div class="card" id="category-list"> <!-- ⭐9 A7/B3 占比条修正：周期负债=橙，合计=¥12,840，宽度按真实占比 -->
             <div class="bar-row"><span class="name">周期负债</span><div class="track"><div class="fill" style="width:78%;background:var(--color-liability)"></div></div><span class="val amount amount--liability">¥10,000</span></div>
@@ -501,8 +482,9 @@ input{font-family:inherit;}
           </div>
           <div class="section-gap"></div>
 
+          <!-- ⭐v5 D 消费排行（标题精简；分段贴合内容右对齐） -->
           <div class="chart-card" id="ranking-card">
-            <div class="chart-head"><div class="h2">消费排行 · 高→低</div>
+            <div class="chart-head"><div class="h2">消费排行</div>
               <div class="segmented" id="ranking-seg">
                 <button data-seg="本周">本周</button>
                 <button data-seg="本月" class="active">本月</button>
@@ -511,6 +493,21 @@ input{font-family:inherit;}
               </div>
             </div>
             <div id="ranking-list"></div>
+          </div>
+          <div class="section-gap"></div>
+
+          <!-- ⭐v5 E 支出趋势 折线（仅支出单序列 primary；置底） -->
+          <div class="chart-card">
+            <div class="chart-head"><div class="h2">支出趋势</div>
+              <div class="legend"><span><i style="background:var(--color-primary)"></i>支出</span></div>
+            </div>
+            <svg viewBox="0 0 320 160" width="100%" height="160" fill="none">
+              <line x1="0" y1="20" x2="320" y2="20" stroke="var(--color-divider)" stroke-width="1"/>
+              <line x1="0" y1="60" x2="320" y2="60" stroke="var(--color-divider)" stroke-width="1"/>
+              <line x1="0" y1="100" x2="320" y2="100" stroke="var(--color-divider)" stroke-width="1"/>
+              <line x1="0" y1="140" x2="320" y2="140" stroke="var(--color-divider)" stroke-width="1"/>
+              <polyline id="trend-line" points="" fill="none" stroke="var(--color-primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
           </div>
           <div class="section-gap"></div>
         </div>
@@ -730,7 +727,7 @@ input{font-family:inherit;}
       </div>
     </div>
 
-    <!-- ============ ④ 卡片详情 Sheet ============ -->
+    <!-- ============ ④ 卡片 编辑 Sheet（⭐v5 合并详情+编辑：点卡即编辑态） ============ -->
     <div class="sheet sheet--bottom" id="sheet-card">
       <div class="sheet-handle"></div>
       <div class="sheet-head"><div class="h1" id="card-detail-name">卡片</div>
@@ -740,17 +737,27 @@ input{font-family:inherit;}
       </div>
       <div class="sheet-body">
         <div class="stored-card" id="card-detail-card"></div>
+        <div class="field-label">卡片类型</div>
+        <div class="chips" id="cardedit-type">
+          <button class="chip" data-v="储蓄卡">银行卡</button>
+          <button class="chip" data-v="购物卡">购物卡</button>
+          <button class="chip" data-v="服务卡">服务卡</button>
+          <button class="chip" data-v="自定义">自定义</button>
+        </div>
+        <div class="field-label">卡片名称</div>
+        <input class="ledger-input" id="cardedit-name" type="text" placeholder="如：咖啡储值卡" />
+        <div class="field-label">可用余额</div>
+        <input class="ledger-input" id="cardedit-balance" type="number" inputmode="decimal" placeholder="0.00" />
         <div class="validity-row">
           <span class="vl">有效期</span>
           <span class="vr"><span id="card-detail-valid"></span><span class="edit-link" id="card-edit-valid">编辑</span></span>
         </div>
-        <div style="margin-top:var(--space-3)"><button class="btn btn-ghost" id="card-edit" style="border-width:1.5px;height:42px">编辑卡片</button></div> <!-- ⭐E3 卡片编辑入口 -->
         <div class="field-label">消费记录</div>
         <div class="group-card" id="card-detail-flow"></div>
       </div>
       <div class="sheet-foot">
-        <button class="btn btn-ghost" id="card-recharge">充值</button>
-        <button class="btn btn-primary" id="card-consume">消费</button>
+        <button class="btn btn-secondary" data-close>取消</button>
+        <button class="btn btn-primary" id="cardedit-save">保存</button>
       </div>
     </div>
 
@@ -879,34 +886,7 @@ input{font-family:inherit;}
       </div>
     </div>
 
-    <!-- ============ ④ 卡片 编辑 Sheet ============ -->
-    <div class="sheet sheet--bottom sub-sheet" id="sheet-card-edit">
-      <div class="sheet-handle"></div>
-      <div class="sheet-head"><div class="h1">编辑卡片</div>
-        <button class="icon-btn" data-close aria-label="关闭">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
-        </button>
-      </div>
-      <div class="sheet-body">
-        <div class="field-label">卡片类型</div>
-        <div class="chips" id="cardedit-type">
-          <button class="chip" data-v="储蓄卡">银行卡</button>
-          <button class="chip" data-v="购物卡">购物卡</button>
-          <button class="chip" data-v="服务卡">服务卡</button>
-          <button class="chip" data-v="自定义">自定义</button>
-        </div>
-        <div class="field-label">卡片名称</div>
-        <input class="ledger-input" id="cardedit-name" type="text" placeholder="如：咖啡储值卡" />
-        <div class="field-label">余额</div>
-        <input class="ledger-input" id="cardedit-balance" type="number" inputmode="decimal" placeholder="0.00" />
-        <div class="field-label">有效期</div>
-        <button class="btn btn-ghost" id="cardedit-valid-btn" style="border-width:1.5px;height:42px">编辑有效期</button>
-      </div>
-      <div class="sheet-foot">
-        <button class="btn btn-secondary" data-close>取消</button>
-        <button class="btn btn-primary" id="cardedit-save">保存</button>
-      </div>
-    </div>
+    <!-- ============ ④ 卡片 编辑 Sheet（⭐v5 已删除：合并进 #sheet-card 点卡即编辑） ============ -->
 
     <!-- ============ Toast ============ -->
     <div class="toast" id="toast">
@@ -1167,6 +1147,7 @@ function renderRanking(){
       + '<div class="rank-bar" style="width:'+pct+'%"></div>';
   });
   el.innerHTML = html;
+  fitAmounts(); /* ⭐v5 F 排行金额自适应兜底 */
 }
 
 /* ============ 屏幕切换 ============ */
@@ -1382,49 +1363,90 @@ function openRecordEdit(idx){
   });
 });
 
-// ⭐4 A1/D1 报表分段：周/月/季/年 四套自洽 mock 数据（环形弧长=支出占比、汇总=收入-支出、分类合计=支出总额）
+// ⭐v5 B/C/E 报表分段：周/月/季/年 四套自洽 mock 数据（cats=支出分类构成、trend=支出趋势按周期点数、diff=环比、汇总=收入-支出）
 const periodLabel = {'周':'本周','月':'本月','季':'本季','年':'本年'};
+const periodDays = {'周':7,'月':30,'季':90,'年':365};
+const diffLabels = {'周':'比上周支出','月':'比上月支出','季':'比上季支出','年':'比上年支出'};
 const reportData = {
-  '周': { expense:2800, income:5800, bars:[35,55,30,50,65,45,38,58], line:[95,80,100,70,60,85,75,65],
-         cats:[['周期负债',1200,'liability'],['餐饮',680,'expense'],['居家',500,'expense'],['交通',420,'expense']] },
-  '月': { expense:12840, income:23500, bars:[40,70,30,90,55,110,60,100], line:[72,58,86,46,64,38,54,42],
-         cats:[['周期负债',10000,'liability'],['居家',1200,'expense'],['餐饮',1240,'expense'],['交通',400,'expense']] },
-  '季': { expense:38000, income:70000, bars:[55,75,40,95,65,110,80,90], line:[58,48,70,40,55,32,45,38],
-         cats:[['周期负债',28000,'liability'],['居家',3200,'expense'],['餐饮',4200,'expense'],['交通',2600,'expense']] },
-  '年': { expense:150000, income:280000, bars:[65,85,50,100,75,110,90,105], line:[50,40,62,34,48,26,38,30],
-         cats:[['周期负债',105000,'liability'],['居家',15000,'expense'],['餐饮',18000,'expense'],['交通',12000,'expense']] }
+  '周': { expense:2800, income:5800, diff:8,
+         cats:[['周期负债',1200,'liability'],['餐饮',680,'expense'],['居家',500,'expense'],['交通',420,'expense']],
+         trend:[380,320,450,300,420,350,580] },
+  '月': { expense:12840, income:23500, diff:-12,
+         cats:[['周期负债',10000,'liability'],['居家',1200,'expense'],['餐饮',1240,'expense'],['交通',400,'expense']],
+         trend:[900,1200,800,1500,950,1100,1600,700,1050,1300,880,860] },
+  '季': { expense:38000, income:70000, diff:15,
+         cats:[['周期负债',28000,'liability'],['居家',3200,'expense'],['餐饮',4200,'expense'],['交通',2600,'expense']],
+         trend:[3000,2800,3500,3200,4000,2900,3400,3100,3600,2700,3300,2500] },
+  '年': { expense:150000, income:280000, diff:-6,
+         cats:[['周期负债',105000,'liability'],['居家',15000,'expense'],['餐饮',18000,'expense'],['交通',12000,'expense']],
+         trend:[12000,11000,13500,12000,15000,12500,14000,11500,13000,11000,12500,12000] }
 };
+/* ⭐v5 F 环形 4 段色：周期负债=liability 橙（强调），其余 primary 三档深浅（主色系深浅，无新色相） */
+const catColors = ['var(--color-liability)','var(--color-primary)','var(--color-primary-hover)','var(--color-primary-soft)'];
+/* ⭐v5 F 金额自适应：字符数估宽（0.62em/字符）线性缩放，只缩不放，下限 12px；禁止缩写/溢出 */
+function fitAmount(el, basePx, availPx){
+  const t = (el.textContent||'').trim();
+  const est = t.length * 0.62 * basePx;
+  const scale = Math.min(1, availPx/est);
+  const px = Math.max(12, basePx*scale);
+  el.style.fontSize = px+'px';
+  el.style.lineHeight = (px*1.15)+'px';
+}
+function fitAmounts(){
+  // 汇总卡 2×2 四项（amount-lg 22px 基准）
+  ['sum-expense','sum-daily','sum-diff','sum-balance'].forEach(id=>{
+    const el=document.getElementById(id); if(!el) return;
+    fitAmount(el, 22, (el.parentElement.clientWidth||150)-4);
+  });
+  // 环形环心金额（内径≈102px，留安全边距）
+  const dt=document.getElementById('donut-total'); if(dt) fitAmount(dt, 17, 100);
+  // 环形图例金额（可换行，逐项兜底）
+  document.querySelectorAll('#donut-legend span').forEach(s=>fitAmount(s,12,(s.parentElement.clientWidth||300)-4));
+  // 分类明细占比条金额（.val 固定 84px 宽，大金额兜底）
+  document.querySelectorAll('#category-list .bar-row .val').forEach(el=>fitAmount(el,13,(el.clientWidth||80)-2));
+  // 消费排行金额（上限 120px）
+  document.querySelectorAll('#ranking-list .rank-amt .amount').forEach(el=>fitAmount(el,17,120));
+}
 function renderReport(period){
   const d = reportData[period] || reportData['月'];
   const pl = periodLabel[period] || '本月';
-  // 趋势柱（支出，8 根）
-  let barsHTML = '';
-  d.bars.forEach((h,i)=>{ barsHTML += '<rect x="'+(14+i*36)+'" y="'+(140-h)+'" width="16" height="'+h+'" rx="3"/>'; });
-  document.getElementById('trend-bars').innerHTML = barsHTML;
-  // 趋势折线（收入）
-  const pts = d.line.map((y,i)=>(22+i*36)+','+y).join(' ');
+  // 支出趋势折线（仅支出单序列 primary；点数按周期：周7/月12/季12/年12）
+  const tr = d.trend;
+  const tmin = Math.min.apply(null,tr), tmax = Math.max.apply(null,tr);
+  const pts = tr.map((v,i)=>{
+    const x = i*(320/(tr.length-1||1));
+    const y = 140 - ((v-tmin)/((tmax-tmin)||1))*110 - 10; // 20..130 区间
+    return x.toFixed(1)+','+y.toFixed(1);
+  }).join(' ');
   document.getElementById('trend-line').setAttribute('points', pts);
-  // 环形：弧长 = 支出占总收支比例
+  // 环形：支出分类构成 4 段（弧长=分类/总支出占比，累积 dashoffset）
   const C = 339.3;
-  const eLen = Math.round(d.expense/(d.expense+d.income)*C*10)/10;
-  const iLen = Math.round((C-eLen)*10)/10;
-  document.getElementById('donut-arc-expense').setAttribute('stroke-dasharray', eLen+' '+C);
-  document.getElementById('donut-arc-income').setAttribute('stroke-dasharray', iLen+' '+C);
-  document.getElementById('donut-arc-income').setAttribute('stroke-dashoffset', -eLen);
-  // 环心 + 图例
-  document.getElementById('donut-label').textContent = pl+'支出';
-  document.getElementById('donut-expense').textContent = fmt(d.expense);
-  document.getElementById('legend-expense').innerHTML = '<i style="background:var(--color-primary)"></i>支出 '+fmt(d.expense);
-  document.getElementById('legend-income').innerHTML = '<i style="background:var(--color-liability)"></i>收入 '+fmt(d.income);
-  // 汇总（结余 = 收入 - 支出）
-  document.getElementById('sum-income-label').textContent = pl+'收入';
-  document.getElementById('sum-expense-label').textContent = pl+'支出';
-  document.getElementById('sum-income').textContent = fmt(d.income);
+  let off = 0;
+  d.cats.forEach((c,i)=>{
+    const len = Math.round(c[1]/d.expense*C*10)/10;
+    const arc = document.getElementById('donut-arc-'+i);
+    if(arc){
+      arc.setAttribute('stroke-dasharray', len+' '+C);
+      arc.setAttribute('stroke-dashoffset', -off);
+      arc.setAttribute('stroke', catColors[i]||'var(--color-primary)');
+    }
+    off += len;
+  });
+  document.getElementById('donut-label').textContent = pl+'总支出';
+  document.getElementById('donut-total').textContent = fmt(d.expense);
+  document.getElementById('donut-legend').innerHTML = d.cats.map((c,i)=>{
+    return '<span><i style="background:'+(catColors[i]||'var(--color-primary)')+'"></i>'+c[0]+' '+fmt(c[1])+'</span>';
+  }).join('');
+  // 汇总卡 2×2（支出/日均支出/比上周支出/收支结余；结余按正负着色）
+  document.getElementById('sum-expense-label').textContent = '支出';
   document.getElementById('sum-expense').textContent = fmt(d.expense);
+  document.getElementById('sum-daily').textContent = fmt(Math.round(d.expense/periodDays[period]*100)/100);
+  document.getElementById('sum-diff-label').textContent = diffLabels[period]||'比上月支出';
+  document.getElementById('sum-diff').textContent = (d.diff>=0?'↑ ':'↓ ') + Math.abs(d.diff) + '%';
   const bal = d.income - d.expense;
   const balEl = document.getElementById('sum-balance');
   balEl.textContent = fmt(bal);
-  balEl.className = 'amount amount-md ' + (bal>=0 ? 'amount--income' : 'amount--expense');
+  balEl.className = 'amount amount-lg ' + (bal>=0 ? 'amount--income' : 'amount--expense');
   // 分类明细（合计 = 支出总额；周期负债用 liability 橙）
   document.getElementById('category-list').innerHTML = d.cats.map(c=>{
     const pct = Math.round(c[1]/d.expense*100);
@@ -1432,6 +1454,7 @@ function renderReport(period){
     const cls = c[2]==='liability' ? ' amount--liability' : '';
     return '<div class="bar-row"><span class="name">'+c[0]+'</span><div class="track"><div class="fill" style="width:'+pct+'%;background:'+color+'"></div></div><span class="val amount'+cls+'">'+fmt(c[1])+'</span></div>';
   }).join('');
+  fitAmounts(); /* ⭐v5 F 渲染后统一自适应 */
 }
 document.querySelectorAll('#report-seg button').forEach(b=>{
   b.addEventListener('click',()=>{
@@ -1450,13 +1473,13 @@ document.querySelectorAll('#ranking-seg button').forEach(b=>{
   });
 });
 
-// 卡片点击 → 详情
+// 卡片点击 → 打开即编辑态（⭐v5 合并详情+编辑为一张 Sheet：fillCardEdit 渲染预览+字段+消费记录）
 let cardDetailIdx = -1;
-document.getElementById('cards-list').addEventListener('click',e=>{
-  const card=e.target.closest('[data-card]'); if(!card)return;
-  cardDetailIdx = +card.dataset.card;
-  const c=cardsData[cardDetailIdx];
-  document.getElementById('card-detail-name').textContent=c.name;
+function fillCardEdit(idx){
+  cardDetailIdx = idx;
+  const c = cardsData[idx];
+  if(!c) return;
+  document.getElementById('card-detail-name').textContent = c.name;
   document.getElementById('card-detail-card').innerHTML =
     '<div class="row"><span class="name">'+c.name+'</span><span class="type-badge">'+c.type+'</span></div>'
     + '<div><div class="balance-label">可用余额</div><div class="amount amount-md">'+fmt(c.balance)+'</div></div>'
@@ -1472,11 +1495,16 @@ document.getElementById('cards-list').addEventListener('click',e=>{
     + '<div class="flow-main"><div class="cat">'+f.cat+'</div><div class="sub">'+f.sub+'</div></div>'
     + '<div class="flow-amount amount amount-lg amount--'+f.cls+'">'+(f.cat==='充值'?'+':'-')+fmt(f.amt)+'</div></div>'
   ).join('');
+  setChipActive('cardedit-type', c.type);
+  document.getElementById('cardedit-name').value = c.name;
+  document.getElementById('cardedit-balance').value = c.balance;
+}
+document.getElementById('cards-list').addEventListener('click',e=>{
+  const card=e.target.closest('[data-card]'); if(!card)return;
+  fillCardEdit(+card.dataset.card);
   openSheet(document.getElementById('sheet-card'));
 });
-document.getElementById('card-recharge').addEventListener('click',()=>{ closeSheet(); showToast('充值入口（示例）'); });
-document.getElementById('card-consume').addEventListener('click',()=>{ closeSheet(); showToast('消费入口（示例）'); });
-// 卡片有效期编辑（⭐E3 预填逻辑抽为共享 helper，卡片详情与卡片编辑 Sheet 复用）
+// 卡片有效期编辑（⭐E3 预填逻辑抽为共享 helper；⭐v5 合并 Sheet 内仅"编辑"链接入口）
 function openValidityEditor(idx){
   const c = cardsData[idx];
   document.getElementById('vv-mm').value = c.valid ? c.valid.split('/')[0] : '';
@@ -1487,7 +1515,6 @@ function openValidityEditor(idx){
   openSheet(document.getElementById('sheet-card-validity'));
 }
 document.getElementById('card-edit-valid').addEventListener('click',()=>{ closeSheet(); openValidityEditor(cardDetailIdx); });
-document.getElementById('cardedit-valid-btn').addEventListener('click',()=>{ closeSheet(); openValidityEditor(cardDetailIdx); });
 document.getElementById('vv-toggle').addEventListener('click',function(){
   this.classList.toggle('on');
   const on = this.classList.contains('on');
@@ -1502,6 +1529,8 @@ document.getElementById('vv-save').addEventListener('click',()=>{
   else { const m=(document.getElementById('vv-mm').value||'--').trim(), y=(document.getElementById('vv-yy').value||'--').trim(); cardsData[cardDetailIdx].valid = m+'/'+y; }
   renderCards();
   closeSheet();
+  fillCardEdit(cardDetailIdx); /* ⭐v5 重新打开合并 Sheet 并刷新预览/有效期行（不再整单关闭回列表） */
+  openSheet(document.getElementById('sheet-card'));
   showToast('有效期已更新');
 });
 // 添加卡片
@@ -1517,26 +1546,12 @@ document.getElementById('addcard-save').addEventListener('click',()=>{
   showToast('已添加卡片');
 });
 
-// ⭐E3 卡片编辑：入口（卡片详情"编辑卡片"）+ 预填 + 保存
-let cardEditIdx = -1;
+// ⭐v5 合并 Sheet 保存：写 cardsData → renderCards → Toast → 关闭（"点即改"）
 singleChip(document.getElementById('cardedit-type'));
 singleChip(document.getElementById('pedit-freq'));
-function openCardEdit(idx){
-  const c = cardsData[idx];
-  cardEditIdx = idx;
-  document.getElementById('cardedit-name').value = c.name;
-  setChipActive('cardedit-type', c.type);
-  document.getElementById('cardedit-balance').value = c.balance;
-  openSheet(document.getElementById('sheet-card-edit'));
-}
-document.getElementById('card-edit').addEventListener('click',()=>{
-  if(cardDetailIdx<0) return;
-  closeSheet();
-  openCardEdit(cardDetailIdx);
-});
 document.getElementById('cardedit-save').addEventListener('click',()=>{
-  if(cardEditIdx<0) return;
-  const c = cardsData[cardEditIdx];
+  if(cardDetailIdx<0) return;
+  const c = cardsData[cardDetailIdx];
   c.type = document.querySelector('#cardedit-type .chip.active').dataset.v;
   c.name = (document.getElementById('cardedit-name').value || c.name).trim();
   c.balance = parseFloat(document.getElementById('cardedit-balance').value) || 0;

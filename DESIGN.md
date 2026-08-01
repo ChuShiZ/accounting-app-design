@@ -77,7 +77,7 @@
 | `--text-caption` | 13px | 400 | 1.40 | 时间、次要元数据（secondary 色）|
 | `--text-micro` | 12px | 500 | 1.30 | 标签、徽章、单位（¥/期）|
 
-**金额铁律**：`text-align:right` + `tabular-nums` + 千分位（`Intl.NumberFormat('zh-CN')`，`¥` 前缀同字号、字重可降一档）。
+**金额铁律**：`text-align:right` + `tabular-nums` + 千分位（`Intl.NumberFormat('zh-CN')`，`¥` 前缀同字号、字重可降一档）。金额组件需自适应字号（字符数估宽/测量缩放，如 `fitAmount`），**禁止缩写（如"万/亿"）、禁止溢出**。
 
 ### 2.3 Spacing / Radius / Shadow
 
@@ -135,7 +135,7 @@
 **⑧ 图表占位规范**
 - 容器：白卡 `--radius-lg`，最小高 200px。
 - 折线/柱状：浅网格线 `--color-divider`；主序列 `--color-primary`，对比序列用 `--color-liability`；最多 2 序列，无重渐变。
-- 环形：外圈 `border:12px --color-divider`，主弧 `--color-primary`；中心放总额 `--text-amount-xl`；图例为小行（色点+标签+金额）。
+- 环形：外圈 `border:12px --color-divider`，主弧 `--color-primary`；中心放**占比 % 或自适应金额**（fitAmount 字符数估宽缩放，禁止缩写/溢出）；图例为小行（色点+标签+金额）。
 - 轴标签 `--text-caption` secondary。
 
 **⑨ 空 / 加载 / 成功 / 危险态**
