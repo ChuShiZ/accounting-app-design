@@ -1,7 +1,8 @@
 # DESIGN.md — 移动端记账 App「现代简约·财务可信」设计系统
 
 > 基准系统：**Stripe（靛信任色 + 数据极简）** 为视觉与色彩基石，叠加 **Apple iOS HIG** 原生移动范式（Tab Bar / 底部 Sheet / 安全区 / 系统字体），以 **Coinbase（纯蓝信任）** 为可选备选色相。
-> 平台：原生 iOS/Android，375–430dp 竖屏，单手热区；仅浅色，不做深色模式。
+> 平台：原生 iOS/Android，375dp 设计稿基准（原型 375×667），覆盖至 430dp 竖屏，单手热区；仅浅色，不做深色模式。
+> 修订：2026-08-05 对齐原型 v14（概览卡对齐、环比箭头、卡片类型三选一、默认消费类别）
 
 ---
 
@@ -67,8 +68,8 @@
 **字号阶（dp/px，移动基准）**
 | Token | 尺寸 | 字重 | 行高 | 用途 |
 |-------|------|------|------|------|
-| `--text-amount-xl` | 34px | 700 | 1.10 | 概览本月/今日支出、报表合计 |
-| `--text-amount-lg` | 22px | 600 | 1.20 | 流水每条金额（右对齐 tnum）|
+| `--text-amount-xl` | 34px | 700 | 1.10 | 概览本月收入（大主数，左对齐）|
+| `--text-amount-lg` | 22px | 600 | 1.20 | 流水每条金额（右对齐 tnum）、概览今日/本月支出、报表汇总金额 |
 | `--text-amount-md` | 17px | 600 | 1.30 | 卡片余额、表单输入金额 |
 | `--text-h1` | 20px | 600 | 1.30 | 页面标题、Sheet 标题 |
 | `--text-h2` | 17px | 600 | 1.35 | 分组标题（今天/昨天/更早）、卡片标题 |
@@ -77,7 +78,8 @@
 | `--text-caption` | 13px | 400 | 1.40 | 时间、次要元数据（secondary 色）|
 | `--text-micro` | 12px | 500 | 1.30 | 标签、徽章、单位（¥/期）|
 
-**金额铁律**：`text-align:right` + `tabular-nums` + 千分位（`Intl.NumberFormat('zh-CN')`，`¥` 前缀同字号、字重可降一档）。金额组件需自适应字号（字符数估宽/测量缩放，如 `fitAmount`），**禁止缩写（如"万/亿"）、禁止溢出**。
+**金额铁律**：`tabular-nums` + 千分位（`Intl.NumberFormat('zh-CN')`，`¥` 前缀同字号、字重可降一档）。金额组件需自适应字号（字符数估宽/测量缩放，如 `fitAmount`），**禁止缩写（如"万/亿"）、禁止溢出**。
+**对齐（v14 定稿）**：默认 `text-align:right`（流水行/表单）；**概览卡/汇总卡按布局指定**——首页概览：今日支出左对齐、本月支出右对齐（label 同步）、本月收入左对齐；报表汇总 2×2：支出/比上月支出左对齐、日均支出/收支结余右对齐（label 同步）。
 
 ### 2.3 Spacing / Radius / Shadow
 
@@ -118,7 +120,9 @@
 **④ 卡片组件（三型统一基座）**
 - 基座：白底、`1px --color-border`、`--radius-lg`、padding 16px、`--shadow-xs`（或无阴影仅边框）。
 - **流水项**：左 40px 圆角-full 徽章（浅底+20px 线性图标）→ 中（类别 `--text-body` / 备注·时间 `--text-caption` secondary）→ 右金额 `--text-amount-lg` 按状态着色、右对齐 tnum。行 padding 12px 16px。
-- **概览卡**：`--radius-xl`，含 3 指标（今日/本月支出、本月收入），大数 `--text-amount-xl`。
+- **概览卡**：`--radius-xl`，2 列 grid；今日支出/本月支出（`--text-amount-lg`）+ 本月收入整行（`--text-amount-xl`）。**对齐（v14）**：今日支出整格左对齐、本月支出整格右对齐（label 同步）、本月收入左对齐。
+- **报表汇总卡**（2×2）：支出/日均支出/比上月支出/收支结余；**对齐（v14）**：支出、比上月支出左对齐；日均支出、收支结余右对齐（label 同步）。
+- **环比箭头**（比上月支出）：箭头 `--text-caption`(13px)/400/`opacity:.75`，紧贴数字（无空格，margin-right 1px）；百分比保持 `--text-amount-lg`。主视觉是数字，箭头仅弱化辅助。
 - **卡片实体（储值卡）**：全站**唯一**允许的 1 处 2-stops 品牌渐变 `linear-gradient(135deg,#4F46E5,#4338CA)`；白字：名称/类型徽章/余额 `--text-amount-md`/有效期 `--text-caption`。
 
 **⑤ 列表分组**
@@ -210,7 +214,7 @@
 | ① 首页 | Tab Bar(选中=首页) / 概览卡 / 流水列表(今天·昨天·更早) / 搜索框 / FAB | primary-light(选中底)、amount-xl(概览)、amount-lg+四态色(流水)、surface-2(搜索框)、FAB(primary+shadow-fab) |
 | ② 记账页 | 半屏 Sheet / 金额输入 / 类别 chips / 保存按钮 | radius-xl(Sheet 顶)、shadow-lg、amount-md tnum(输入)、radius-sm chips(选中 primary-light)、primary 按钮 |
 | ③ 周期性支出 | 分组卡 / 进度条 / 详情 | radius-lg(卡)、liability 橙(进度填充+剩余金额)、caption(期数标签) |
-| ④ 卡片管理 | 卡片实体 / 消费记录列表 / 有效期 | 唯一渐变(primary→primary-hover)、balance 白字 amount-md、divider(行)、caption(有效期) |
+| ④ 卡片管理 | 卡片实体 / 消费记录列表 / 有效期 / **卡片编辑（类型三选一 chips + 默认消费类别 chips）** | 唯一渐变(primary→primary-hover)、balance 白字 amount-md、divider(行)、caption(有效期)、radius-sm chips(默认消费类别单选) |
 | ⑤ 统计报表 | 分段控件(周月季年) / 趋势图 / 环形 / 明细 | surface-2(分段底)、primary+liability(序列)、divider(网格)、amount-xl(环心) |
 | ⑥ 明细搜索 | 搜索框 / 筛选抽屉(chips) / 结果列表 | surface-2(搜索)、radius-xl(Sheet)、radius-sm chips、复用流水项(amount-lg+四态) |
 
