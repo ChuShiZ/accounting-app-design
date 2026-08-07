@@ -1,21 +1,41 @@
-/* ② 记账 Sheet：类型/类别/账户/金额/日期/图片/备注 + 保存（新增/编辑） */
+/* ② 记账 Sheet：类型/类别/账户（仅卡片下拉）/金额/日期/图片/备注 + 保存（新增/编辑）
+   ⭐v14 账户选择（ADR-020/021）：
+   - 账户 = 卡片列表（动态渲染自 cardsData，无"现金"账户）
+   - 默认账户 = 卡片页"默认账户"弹窗设置（defAcc），未设默认第一张卡
+   - 选储值卡 → 类别默认联动为卡片 default_category（未配则保持当前）
+   - 保存：银行卡=expense+channel、储值卡=card(balance)；收入恒 income 不挂卡 */
 window.记账Sheet = {
-  setup(){ return { store: window.store, homeData: window.homeData, fmt: window.fmt, icon: window.icon, closeSheet: window.closeSheet, showToast: window.showToast } },
-  data(){ return { type:'expense', cat:'餐饮', acc:'现金', amount:'¥0.00', note:'', imgOn:false, editing:false } },
+  setup(){ return { store: window.store, homeData: window.homeData, cardsData: window.cardsData, fmt: window.fmt, icon: window.icon, closeSheet: window.closeSheet, showToast: window.showToast } },
+  data(){ return { type:'expense', cat:'餐饮', acc:'', amount:'¥0.00', note:'', imgOn:false, editing:false } },
+  computed: {
+    /* 账户列表：仅卡片（⭐v14 无"现金"账户） */
+    accList(){ return window.cardsData.map(function(c){ return c.name }) },
+    /* 当前选中卡片的类型 */
+    accCard(){ return window.cardsData.find(function(c){ return c.name===this.acc },this) || null }
+  },
   watch: {
-    'store.sheet'(v){
+    /* ⭐v15 immediate：组件 v-if 创建时值已就位，watch 不会触发回调，需创建即初始化 */
+    'store.sheet': {
+      immediate: true,
+      handler(v){
       if(v!=='记录') return
       this.editing = window.store.flowEditIdx >= 0 && !!window.homeData[window.store.flowEditIdx]
       if(this.editing){
         const t = window.homeData[window.store.flowEditIdx]
         this.type = t.cls==='income' ? 'income' : 'expense'
         this.cat = t.catKey || '餐饮'
-        this.acc = t.acc || '现金'
+        this.acc = t.acc || (window.cardsData.length ? window.cardsData[0].name : '')
         this.amount = window.fmt(t.amount)
         this.note = t.remark || ''
         this.imgOn = !!t.hasImg
       } else {
-        this.type='expense'; this.cat='餐饮'; this.acc='现金'; this.amount='¥0.00'; this.note=''; this.imgOn=false
+        /* ⭐v14 默认账户：账户下拉默认选中 defAcc（卡片页"默认账户"弹窗设置）；未设则第一张卡；储值卡联动默认类别 */
+        this.type='expense'; this.cat='餐饮'; this.acc=window.store.defAcc || (window.cardsData.length ? window.cardsData[0].name : ''); this.amount='¥0.00'; this.note=''; this.imgOn=false
+        const card = window.cardsData.find(function(c){ return c.name===this.acc },this)
+        if(card && card.type!=='银行卡' && card.defcat && ['餐饮','交通','购物','居家','工资','周期','其他'].includes(card.defcat)){
+          this.cat = card.defcat
+        }
+      }
       }
     }
   },
@@ -27,17 +47,33 @@ window.记账Sheet = {
       this.amount = (v===''||v==='.') ? '¥0.00' : '¥'+((parseFloat(v)||0).toLocaleString('zh-CN',{minimumFractionDigits:2,maximumFractionDigits:2}))
     },
     onAmountFocus(){ if(this.amount==='¥0.00') this.amount='¥' },
+    /* ⭐v14 选账户/卡片：储值卡且有 default_category → 类别联动默认选中（可切换）；银行卡不改变类别 */
+    selectAcc(a){
+      this.acc = a
+      if(this.type==='income') return
+      const card = window.cardsData.find(function(c){ return c.name===a })
+      if(!card || card.type==='银行卡') return
+      if(card.defcat && ['餐饮','交通','购物','居家','工资','周期','其他'].includes(card.defcat)){
+        this.cat = card.defcat
+      }
+    },
     save(){
       const num = parseFloat(this.amount.replace(/[^\d.]/g,'')) || 0
       if(num<=0){ window.showToast('请输入金额'); return }
-      const cls = this.type==='income' ? 'income' : (this.acc.includes('卡') ? 'balance' : 'expense')
+      /* 支出类型判定：银行卡=expense（渠道仅记录）、储值卡/自定义卡=balance（卡片消费）；收入恒 income */
+      let cls = 'expense'
+      if(this.type==='income') cls = 'income'
+      else {
+        const card = window.cardsData.find(function(c){ return c.name===this.acc },this)
+        cls = (card && card.type==='银行卡') ? 'expense' : 'balance'
+      }
       if(this.editing){
         const t = window.homeData[window.store.flowEditIdx]
         t.amount=num; t.cls=cls; t.cat=this.cat+(this.type==='income'?'收入':''); t.catKey=this.cat; t.acc=this.acc
         t.remark = this.note || t.remark; t.hasImg=this.imgOn
         window.showToast('已更新')
       } else {
-        window.homeData.unshift({group:'今天', icon: this.type==='income'?'salary':'food', cls:cls, cat:this.cat+(this.type==='income'?'收入':''), remark:(this.acc!=='现金'?this.acc:'')+(this.note?('·'+this.note):''), time:'刚刚', amount:num, catKey:this.cat, timeGroup:'本周', acc:this.acc, hasImg:this.imgOn})
+        window.homeData.unshift({group:'今天', icon: this.type==='income'?'salary':'food', cls:cls, cat:this.cat+(this.type==='income'?'收入':''), remark:(this.acc!==''?this.acc:'')+(this.note?('·'+this.note):''), time:'刚刚', amount:num, catKey:this.cat, timeGroup:'本周', acc:this.acc, hasImg:this.imgOn})
         window.showToast('已记一笔 '+window.fmt(num))
       }
       window.closeSheet()
@@ -60,8 +96,14 @@ window.记账Sheet = {
         <button v-for="c in ['餐饮','交通','购物','居家','工资','周期','其他']" :key="c" class="chip" :class="{active:cat===c}" @click="cat=c">{{c}}</button>
       </div>
       <div class="field-label">账户 / 卡片</div>
-      <div class="chips">
-        <button v-for="a in ['现金','银行卡','银座购物卡','理发卡','自定义卡']" :key="a" class="chip" :class="{active:acc===a}" @click="acc=a">{{a}}</button>
+      <div style="position:relative">
+        <select class="ledger-input" :value="acc" @change="selectAcc($event.target.value)" style="appearance:none;padding-right:32px;cursor:pointer">
+          <option v-for="a in accList" :key="a" :value="a">{{a}}</option>
+        </select>
+        <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--color-text-secondary)" v-html="icon('chevron',16)"></span>
+      </div>
+      <div class="caption" v-if="accCard" style="color:var(--color-text-secondary);margin-top:var(--space-2)">
+        {{accCard.type==='银行卡' ? '银行卡支付：记入支出（渠道仅记录）' : '储值卡消费：扣减余额，不计支出'}}
       </div>
       <div class="field-label">日期</div>
       <input class="ledger-input" type="text" value="2026-06-22（今天）" readonly />

@@ -71,11 +71,7 @@ window.卡片Sheet = {
         <button class="icon-btn" @click="closeSheet"><span v-html="icon('close',20)"></span></button>
       </div>
       <div class="sheet-body">
-        <div v-if="curCard" class="stored-card">
-          <div class="row"><span class="name">{{curCard.name}}</span><span class="type-badge">{{curCard.type}}</span></div>
-          <div><div class="balance-label">可用余额</div><div class="amount amount-md">{{fmt(curCard.balance)}}</div></div>
-          <div class="valid" style="opacity:1" v-html="validDisplay(curCard)"></div>
-        </div>
+        <!-- ⭐v15 移除渐变卡实体展示：信息全部由下方表单承载（类型/名称/余额/有效期行） -->
         <div class="field-label">卡片类型</div>
         <div class="chips">
           <button v-for="t in ['银行卡','储值卡','自定义']" :key="t" class="chip" :class="{active:editType===t}" @click="editType=t">{{t}}</button>
@@ -100,7 +96,8 @@ window.卡片Sheet = {
             <div class="flow-amount amount amount-lg" :class="'amount--'+f.cls">{{f.amt>=0?'+':'-'}}{{fmt(Math.abs(f.amt))}}</div>
           </div>
         </div>
-        <button class="btn btn-primary" style="margin-top:var(--space-4)" @click="openRecharge">充值</button>
+        <!-- ⭐v15 充值仅储值卡（type≠银行卡）；银行卡的钱来自收入记账，无充值概念 -->
+        <button v-if="curCard && curCard.type!=='银行卡'" class="btn btn-primary" style="margin-top:var(--space-4)" @click="openRecharge">充值</button>
       </div>
       <div class="sheet-foot">
         <button class="btn btn-secondary" @click="closeSheet">取消</button>

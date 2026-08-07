@@ -3,7 +3,7 @@ window.App = {
   components: {
     'home-page': window.首页, 'report-page': window.报表页, 'cards-page': window.卡片页, 'profile-page': window.我的页,
     'periodic-page': window.周期页, 'search-page': window.搜索页,
-    'record-sheet': window.记账Sheet, 'card-sheet': window.卡片Sheet, 'periodic-sheet': window.周期Sheet, 'filter-sheet': window.筛选Sheet
+    'record-sheet': window.记账Sheet, 'card-sheet': window.卡片Sheet, 'periodic-sheet': window.周期Sheet, 'filter-sheet': window.筛选Sheet, 'defacc-sheet': window.默认账户Sheet
   },
   setup(){
     return { store: window.store, icon: window.icon, openSheet: window.openSheet, closeSheet: window.closeSheet, switchTab: window.switchTab, showToast: window.showToast }
@@ -42,6 +42,7 @@ window.App = {
       <card-sheet v-if="['卡片','充值','添加卡片','有效期'].includes(store.sheet)"/>
       <periodic-sheet v-if="['周期详情','周期编辑','提前还款'].includes(store.sheet)"/>
       <filter-sheet v-if="store.sheet==='筛选'"/>
+      <defacc-sheet v-if="store.sheet==='默认账户'"/>
 
       <div class="toast" :class="{show:store.toastShow}">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5 10 17l9-10"/></svg>

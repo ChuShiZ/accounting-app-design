@@ -47,9 +47,9 @@ window.homeData = Vue.reactive([
 ])
 window.cardsData = Vue.reactive([
   {name:'银行卡',     type:'银行卡', icon:'bank',  balance:3200, valid:'12/28'},
-  {name:'银座购物卡', type:'储值卡', icon:'card',  balance:850,  valid:'06/27'},
+  {name:'银座购物卡', type:'储值卡', icon:'card',  balance:850,  valid:'06/27', defcat:'购物'},
   {name:'理发卡',     type:'储值卡', icon:'scissors', balance:150, valid:null},
-  {name:'咖啡储值卡', type:'自定义', icon:'coffee', balance:120, valid:null}
+  {name:'咖啡储值卡', type:'自定义', icon:'coffee', balance:120, valid:null, defcat:'餐饮'}
 ])
 window.periodicData = Vue.reactive([
   {name:'房贷',   per:6800, next:'07-01', paid:24,  total:360, remain:1024300, start:'2021-07-01', state:'进行中'},
@@ -112,7 +112,9 @@ window.store = Vue.reactive({
   cardEditIdx: -1,
   rechargeIdx: -1,
   periodicDetailIdx: -1,
-  periodicEditIdx: -1
+  periodicEditIdx: -1,
+  /* ⭐v14 默认记账账户：卡片页"默认账户"弹窗设置（选卡片互斥）；null=未设置（记账默认第一张卡） */
+  defAcc: null
 })
 let __toastTimer = null
 window.showToast = function(msg){

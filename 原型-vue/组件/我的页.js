@@ -1,6 +1,6 @@
 /* 我的页：资料 + 菜单入口 */
 window.我的页 = {
-  setup(){ return { store: window.store, icon: window.icon, showScreen: window.showScreen, switchTab: window.switchTab, closeSheet: window.closeSheet, showToast: window.showToast } },
+  setup(){ return { store: window.store, icon: window.icon, showScreen: window.showScreen, switchTab: window.switchTab, closeSheet: window.closeSheet, showToast: window.showToast, openSheet: window.openSheet } },
   methods: {
     nav(name){
       window.closeSheet()
