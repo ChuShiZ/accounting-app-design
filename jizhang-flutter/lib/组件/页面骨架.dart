@@ -9,12 +9,14 @@ class PageScaffold extends StatelessWidget {
     required this.title,
     this.subtitle,
     this.action,
+    this.leading,
     required this.child,
   });
 
   final String title;
   final String? subtitle;
   final Widget? action;
+  final Widget? leading;
   final Widget child;
 
   @override
@@ -34,6 +36,10 @@ class PageScaffold extends StatelessWidget {
             ),
             child: Row(
               children: [
+                if (leading != null) ...[
+                  leading!,
+                  SizedBox(width: tokens.space2),
+                ],
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,

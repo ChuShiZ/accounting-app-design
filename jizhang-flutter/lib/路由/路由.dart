@@ -4,9 +4,12 @@ import '../页面/首页页.dart';
 import '../页面/报表页.dart';
 import '../页面/资产页.dart';
 import '../页面/我的页.dart';
+import '../页面/类别管理页.dart';
+import '../页面/设置页.dart';
 import '../组件/主壳.dart';
 
-final appRouter = GoRouter(
+GoRouter createAppRouter() {
+  return GoRouter(
   initialLocation: '/home',
   routes: [
     StatefulShellRoute.indexedStack(
@@ -26,5 +29,8 @@ final appRouter = GoRouter(
         ),
       ],
     ),
+    GoRoute(path: '/categories', builder: (context, state) => const CategoriesPage()),
+    GoRoute(path: '/settings', builder: (context, state) => const SettingsPage()),
   ],
-);
+  );
+}

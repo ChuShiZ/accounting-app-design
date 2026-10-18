@@ -3,7 +3,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 
 import '../数据/仓库/账户仓库.dart';
 
-enum AccountKind { bank, stored, loan }
+enum AccountKind { bank, stored, credit, deposit, loan }
 
 extension AccountKindX on AccountKind {
   String get label {
@@ -12,6 +12,10 @@ extension AccountKindX on AccountKind {
         return '银行卡';
       case AccountKind.stored:
         return '储值卡';
+      case AccountKind.credit:
+        return '信用卡';
+      case AccountKind.deposit:
+        return '存单';
       case AccountKind.loan:
         return '贷款';
     }
@@ -23,6 +27,10 @@ extension AccountKindX on AccountKind {
         return '名称、开户行、期初余额';
       case AccountKind.stored:
         return '商户、余额、默认消费类别';
+      case AccountKind.credit:
+        return '额度、账单日、还款日';
+      case AccountKind.deposit:
+        return '本金、利率、存期、起存日';
       case AccountKind.loan:
         return '本金、利率、期数、还款日';
     }
@@ -34,6 +42,10 @@ extension AccountKindX on AccountKind {
         return LucideIcons.landmark;
       case AccountKind.stored:
         return LucideIcons.creditCard;
+      case AccountKind.credit:
+        return LucideIcons.creditCard;
+      case AccountKind.deposit:
+        return LucideIcons.piggyBank;
       case AccountKind.loan:
         return LucideIcons.home;
     }
@@ -129,7 +141,13 @@ String accountSubtitle(AccountWithBalance view, {Map<int, String> categoryNames 
       final day = view.card?.repaymentDay;
       return day == null ? '信用卡' : '$day 号还款';
     case 'deposit':
-      return '存单';
+      final deposit = view.deposit;
+      if (deposit == null) return '存单';
+      if (deposit.closedAt != null) {
+        return deposit.closeType == 'renew' ? '存单 · 已转存' : '存单 · 已支取';
+      }
+      final maturity = DateTime.fromMillisecondsSinceEpoch(deposit.maturityAt);
+      return '${(deposit.rateBp / 100).toStringAsFixed(2)}% · ${deposit.termMonths}个月 · 到期 ${formatDate(maturity)}';
     case 'loan':
       final loan = view.loan;
       if (loan == null) return '贷款';

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '主题/主题.dart';
 import '路由/路由.dart';
@@ -19,8 +20,15 @@ Future<void> main() async {
   );
 }
 
-class JizhangApp extends StatelessWidget {
+class JizhangApp extends StatefulWidget {
   const JizhangApp({super.key});
+
+  @override
+  State<JizhangApp> createState() => _JizhangAppState();
+}
+
+class _JizhangAppState extends State<JizhangApp> {
+  late final GoRouter _router = createAppRouter();
 
   @override
   Widget build(BuildContext context) {
@@ -29,7 +37,7 @@ class JizhangApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: buildAppTheme(),
       themeMode: ThemeMode.light,
-      routerConfig: appRouter,
+      routerConfig: _router,
     );
   }
 }

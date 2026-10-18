@@ -18,6 +18,7 @@ class Transactions extends Table {
   TextColumn get groupId => text().nullable()();
   TextColumn get groupKind => text().nullable()();
   BoolColumn get locked => boolean().withDefault(const Constant(false))();
+  BoolColumn get reportable => boolean().withDefault(const Constant(true))();
   TextColumn get note => text().nullable()();
   TextColumn get imagePath => text().nullable()();
   IntColumn get createdAt => integer().withDefault(const Constant(0))();

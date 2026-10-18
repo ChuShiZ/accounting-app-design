@@ -1215,6 +1215,21 @@ class $TransactionsTable extends Transactions
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _reportableMeta = const VerificationMeta(
+    'reportable',
+  );
+  @override
+  late final GeneratedColumn<bool> reportable = GeneratedColumn<bool>(
+    'reportable',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("reportable" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
   static const VerificationMeta _noteMeta = const VerificationMeta('note');
   @override
   late final GeneratedColumn<String> note = GeneratedColumn<String>(
@@ -1270,6 +1285,7 @@ class $TransactionsTable extends Transactions
     groupId,
     groupKind,
     locked,
+    reportable,
     note,
     imagePath,
     createdAt,
@@ -1355,6 +1371,12 @@ class $TransactionsTable extends Transactions
         locked.isAcceptableOrUnknown(data['locked']!, _lockedMeta),
       );
     }
+    if (data.containsKey('reportable')) {
+      context.handle(
+        _reportableMeta,
+        reportable.isAcceptableOrUnknown(data['reportable']!, _reportableMeta),
+      );
+    }
     if (data.containsKey('note')) {
       context.handle(
         _noteMeta,
@@ -1428,6 +1450,10 @@ class $TransactionsTable extends Transactions
         DriftSqlType.bool,
         data['${effectivePrefix}locked'],
       )!,
+      reportable: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}reportable'],
+      )!,
       note: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}note'],
@@ -1464,6 +1490,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
   final String? groupId;
   final String? groupKind;
   final bool locked;
+  final bool reportable;
   final String? note;
   final String? imagePath;
   final int createdAt;
@@ -1479,6 +1506,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     this.groupId,
     this.groupKind,
     required this.locked,
+    required this.reportable,
     this.note,
     this.imagePath,
     required this.createdAt,
@@ -1505,6 +1533,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       map['group_kind'] = Variable<String>(groupKind);
     }
     map['locked'] = Variable<bool>(locked);
+    map['reportable'] = Variable<bool>(reportable);
     if (!nullToAbsent || note != null) {
       map['note'] = Variable<String>(note);
     }
@@ -1538,6 +1567,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
           ? const Value.absent()
           : Value(groupKind),
       locked: Value(locked),
+      reportable: Value(reportable),
       note: note == null && nullToAbsent ? const Value.absent() : Value(note),
       imagePath: imagePath == null && nullToAbsent
           ? const Value.absent()
@@ -1565,6 +1595,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       groupId: serializer.fromJson<String?>(json['groupId']),
       groupKind: serializer.fromJson<String?>(json['groupKind']),
       locked: serializer.fromJson<bool>(json['locked']),
+      reportable: serializer.fromJson<bool>(json['reportable']),
       note: serializer.fromJson<String?>(json['note']),
       imagePath: serializer.fromJson<String?>(json['imagePath']),
       createdAt: serializer.fromJson<int>(json['createdAt']),
@@ -1585,6 +1616,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       'groupId': serializer.toJson<String?>(groupId),
       'groupKind': serializer.toJson<String?>(groupKind),
       'locked': serializer.toJson<bool>(locked),
+      'reportable': serializer.toJson<bool>(reportable),
       'note': serializer.toJson<String?>(note),
       'imagePath': serializer.toJson<String?>(imagePath),
       'createdAt': serializer.toJson<int>(createdAt),
@@ -1603,6 +1635,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     Value<String?> groupId = const Value.absent(),
     Value<String?> groupKind = const Value.absent(),
     bool? locked,
+    bool? reportable,
     Value<String?> note = const Value.absent(),
     Value<String?> imagePath = const Value.absent(),
     int? createdAt,
@@ -1618,6 +1651,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     groupId: groupId.present ? groupId.value : this.groupId,
     groupKind: groupKind.present ? groupKind.value : this.groupKind,
     locked: locked ?? this.locked,
+    reportable: reportable ?? this.reportable,
     note: note.present ? note.value : this.note,
     imagePath: imagePath.present ? imagePath.value : this.imagePath,
     createdAt: createdAt ?? this.createdAt,
@@ -1641,6 +1675,9 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       groupId: data.groupId.present ? data.groupId.value : this.groupId,
       groupKind: data.groupKind.present ? data.groupKind.value : this.groupKind,
       locked: data.locked.present ? data.locked.value : this.locked,
+      reportable: data.reportable.present
+          ? data.reportable.value
+          : this.reportable,
       note: data.note.present ? data.note.value : this.note,
       imagePath: data.imagePath.present ? data.imagePath.value : this.imagePath,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
@@ -1661,6 +1698,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
           ..write('groupId: $groupId, ')
           ..write('groupKind: $groupKind, ')
           ..write('locked: $locked, ')
+          ..write('reportable: $reportable, ')
           ..write('note: $note, ')
           ..write('imagePath: $imagePath, ')
           ..write('createdAt: $createdAt, ')
@@ -1681,6 +1719,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     groupId,
     groupKind,
     locked,
+    reportable,
     note,
     imagePath,
     createdAt,
@@ -1700,6 +1739,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
           other.groupId == this.groupId &&
           other.groupKind == this.groupKind &&
           other.locked == this.locked &&
+          other.reportable == this.reportable &&
           other.note == this.note &&
           other.imagePath == this.imagePath &&
           other.createdAt == this.createdAt &&
@@ -1717,6 +1757,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
   final Value<String?> groupId;
   final Value<String?> groupKind;
   final Value<bool> locked;
+  final Value<bool> reportable;
   final Value<String?> note;
   final Value<String?> imagePath;
   final Value<int> createdAt;
@@ -1732,6 +1773,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     this.groupId = const Value.absent(),
     this.groupKind = const Value.absent(),
     this.locked = const Value.absent(),
+    this.reportable = const Value.absent(),
     this.note = const Value.absent(),
     this.imagePath = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -1748,6 +1790,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     this.groupId = const Value.absent(),
     this.groupKind = const Value.absent(),
     this.locked = const Value.absent(),
+    this.reportable = const Value.absent(),
     this.note = const Value.absent(),
     this.imagePath = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -1767,6 +1810,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     Expression<String>? groupId,
     Expression<String>? groupKind,
     Expression<bool>? locked,
+    Expression<bool>? reportable,
     Expression<String>? note,
     Expression<String>? imagePath,
     Expression<int>? createdAt,
@@ -1783,6 +1827,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
       if (groupId != null) 'group_id': groupId,
       if (groupKind != null) 'group_kind': groupKind,
       if (locked != null) 'locked': locked,
+      if (reportable != null) 'reportable': reportable,
       if (note != null) 'note': note,
       if (imagePath != null) 'image_path': imagePath,
       if (createdAt != null) 'created_at': createdAt,
@@ -1801,6 +1846,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     Value<String?>? groupId,
     Value<String?>? groupKind,
     Value<bool>? locked,
+    Value<bool>? reportable,
     Value<String?>? note,
     Value<String?>? imagePath,
     Value<int>? createdAt,
@@ -1817,6 +1863,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
       groupId: groupId ?? this.groupId,
       groupKind: groupKind ?? this.groupKind,
       locked: locked ?? this.locked,
+      reportable: reportable ?? this.reportable,
       note: note ?? this.note,
       imagePath: imagePath ?? this.imagePath,
       createdAt: createdAt ?? this.createdAt,
@@ -1857,6 +1904,9 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     if (locked.present) {
       map['locked'] = Variable<bool>(locked.value);
     }
+    if (reportable.present) {
+      map['reportable'] = Variable<bool>(reportable.value);
+    }
     if (note.present) {
       map['note'] = Variable<String>(note.value);
     }
@@ -1885,6 +1935,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
           ..write('groupId: $groupId, ')
           ..write('groupKind: $groupKind, ')
           ..write('locked: $locked, ')
+          ..write('reportable: $reportable, ')
           ..write('note: $note, ')
           ..write('imagePath: $imagePath, ')
           ..write('createdAt: $createdAt, ')
@@ -5662,6 +5713,7 @@ typedef $$TransactionsTableCreateCompanionBuilder =
       Value<String?> groupId,
       Value<String?> groupKind,
       Value<bool> locked,
+      Value<bool> reportable,
       Value<String?> note,
       Value<String?> imagePath,
       Value<int> createdAt,
@@ -5679,6 +5731,7 @@ typedef $$TransactionsTableUpdateCompanionBuilder =
       Value<String?> groupId,
       Value<String?> groupKind,
       Value<bool> locked,
+      Value<bool> reportable,
       Value<String?> note,
       Value<String?> imagePath,
       Value<int> createdAt,
@@ -5788,6 +5841,11 @@ class $$TransactionsTableFilterComposer
 
   ColumnFilters<bool> get locked => $composableBuilder(
     column: $table.locked,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get reportable => $composableBuilder(
+    column: $table.reportable,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -5925,6 +5983,11 @@ class $$TransactionsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get reportable => $composableBuilder(
+    column: $table.reportable,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get note => $composableBuilder(
     column: $table.note,
     builder: (column) => ColumnOrderings(column),
@@ -6046,6 +6109,11 @@ class $$TransactionsTableAnnotationComposer
 
   GeneratedColumn<bool> get locked =>
       $composableBuilder(column: $table.locked, builder: (column) => column);
+
+  GeneratedColumn<bool> get reportable => $composableBuilder(
+    column: $table.reportable,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<String> get note =>
       $composableBuilder(column: $table.note, builder: (column) => column);
@@ -6171,6 +6239,7 @@ class $$TransactionsTableTableManager
                 Value<String?> groupId = const Value.absent(),
                 Value<String?> groupKind = const Value.absent(),
                 Value<bool> locked = const Value.absent(),
+                Value<bool> reportable = const Value.absent(),
                 Value<String?> note = const Value.absent(),
                 Value<String?> imagePath = const Value.absent(),
                 Value<int> createdAt = const Value.absent(),
@@ -6186,6 +6255,7 @@ class $$TransactionsTableTableManager
                 groupId: groupId,
                 groupKind: groupKind,
                 locked: locked,
+                reportable: reportable,
                 note: note,
                 imagePath: imagePath,
                 createdAt: createdAt,
@@ -6203,6 +6273,7 @@ class $$TransactionsTableTableManager
                 Value<String?> groupId = const Value.absent(),
                 Value<String?> groupKind = const Value.absent(),
                 Value<bool> locked = const Value.absent(),
+                Value<bool> reportable = const Value.absent(),
                 Value<String?> note = const Value.absent(),
                 Value<String?> imagePath = const Value.absent(),
                 Value<int> createdAt = const Value.absent(),
@@ -6218,6 +6289,7 @@ class $$TransactionsTableTableManager
                 groupId: groupId,
                 groupKind: groupKind,
                 locked: locked,
+                reportable: reportable,
                 note: note,
                 imagePath: imagePath,
                 createdAt: createdAt,

@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
+import '../数据/数据库.dart';
 import '../数据/仓库/账户仓库.dart';
+import '../状态/提供者.dart';
 import '../主题/令牌.dart';
 import '账户展示.dart';
 
-enum AccountDetailAction { edit, delete }
+enum AccountDetailAction { edit, delete, recharge, repay, settleEarly, settleMaturity, renew }
 
 Future<AccountDetailAction?> showAccountDetail(
   BuildContext context,
@@ -14,6 +17,7 @@ Future<AccountDetailAction?> showAccountDetail(
 }) {
   return showModalBottomSheet<AccountDetailAction>(
     context: context,
+    useRootNavigator: true,
     isScrollControlled: true,
     useSafeArea: true,
     showDragHandle: true,
@@ -21,18 +25,21 @@ Future<AccountDetailAction?> showAccountDetail(
   );
 }
 
-class _AccountDetailSheet extends StatelessWidget {
+class _AccountDetailSheet extends ConsumerWidget {
   const _AccountDetailSheet({required this.view, required this.categoryNames});
 
   final AccountWithBalance view;
   final Map<int, String> categoryNames;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final tokens = context.tokens;
     final account = view.account;
     final isLiability = account.type == 'credit' || account.type == 'loan';
     final loan = view.loan;
+    final deposit = view.deposit;
+    final closed = deposit?.closedAt != null;
+    final transactions = ref.watch(accountTransactionsProvider(account.id));
     return SafeArea(
       top: false,
       child: Padding(
@@ -46,25 +53,15 @@ class _AccountDetailSheet extends StatelessWidget {
                   Container(
                     width: 36,
                     height: 36,
-                    decoration: BoxDecoration(
-                      color: tokens.primaryLight,
-                      borderRadius: BorderRadius.circular(tokens.radiusMd),
-                    ),
-                    child: Icon(
-                      accountIcon(view),
-                      size: 20,
-                      color: isLiability ? tokens.liability : tokens.primary,
-                    ),
+                    decoration: BoxDecoration(color: tokens.primaryLight, borderRadius: BorderRadius.circular(tokens.radiusMd)),
+                    child: Icon(accountIcon(view), size: 20, color: isLiability ? tokens.liability : tokens.primary),
                   ),
                   SizedBox(width: tokens.space3),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          account.name,
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: tokens.textPrimary),
-                        ),
+                        Text(account.name, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: tokens.textPrimary)),
                         SizedBox(height: tokens.space1),
                         Text(
                           '${accountTypeLabel(account.type)}${account.institution == null || account.institution!.isEmpty ? '' : ' · ${account.institution}'}',
@@ -83,11 +80,7 @@ class _AccountDetailSheet extends StatelessWidget {
               SizedBox(height: tokens.space4),
               Container(
                 padding: EdgeInsets.all(tokens.space4),
-                decoration: BoxDecoration(
-                  color: tokens.bg,
-                  border: Border.all(color: tokens.border),
-                  borderRadius: BorderRadius.circular(tokens.radiusLg),
-                ),
+                decoration: BoxDecoration(color: tokens.bg, border: Border.all(color: tokens.border), borderRadius: BorderRadius.circular(tokens.radiusLg)),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -106,41 +99,130 @@ class _AccountDetailSheet extends StatelessWidget {
                       ),
                     ),
                     SizedBox(height: tokens.space1),
-                    Text(
-                      accountSubtitle(view, categoryNames: categoryNames),
-                      style: TextStyle(fontSize: 13, color: tokens.textSecondary),
-                    ),
+                    Text(accountSubtitle(view, categoryNames: categoryNames), style: TextStyle(fontSize: 13, color: tokens.textSecondary)),
                   ],
                 ),
               ),
               SizedBox(height: tokens.space4),
-              if (loan != null) ...[
-                _row(context, '贷款类型', _loanKindLabel(loan.kind)),
-                _row(context, '原始本金', formatCents(loan.originalPrincipal)),
-                _row(context, '年利率', '${(loan.rateBp / 100).toStringAsFixed(2)}%'),
-                _row(context, '总期数', '${loan.termMonths} 个月'),
-                _row(context, '起贷日', formatDate(DateTime.fromMillisecondsSinceEpoch(loan.startAt))),
-                _row(context, '下次还款', formatDate(DateTime.fromMillisecondsSinceEpoch(loan.nextDueAt))),
-                if ((loan.perAmount ?? 0) > 0) _row(context, '每期还款', formatCents(loan.perAmount!)),
-                _row(context, '还款方式', _repaymentMethodLabel(loan.repaymentMethod)),
+              if (deposit != null) ...[
+                _row(context, '存单状态', closed ? (deposit.closeType == 'renew' ? '已转存' : '已支取') : '存续中'),
+                _row(context, '存单本金', formatCents(deposit.principal)),
+                _row(context, '年利率', '${(deposit.rateBp / 100).toStringAsFixed(2)}%'),
+                _row(context, '存期', '${deposit.termMonths} 个月'),
+                _row(context, '起存日', formatDate(DateTime.fromMillisecondsSinceEpoch(deposit.startAt))),
+                _row(context, '到期日', formatDate(DateTime.fromMillisecondsSinceEpoch(deposit.maturityAt))),
+                if (deposit.certificateNo?.isNotEmpty == true) _row(context, '存单号', deposit.certificateNo!),
+                _row(
+                  context,
+                  '预计利息',
+                  formatCents((deposit.principal * deposit.rateBp * deposit.termMonths / (10000 * 12)).round()),
+                ),
+                if (deposit.actualInterest != null) _row(context, '实际利息', formatCents(deposit.actualInterest!)),
               ] else ...[
                 _row(context, '账户类型', accountTypeLabel(account.type)),
-                if (account.institution != null && account.institution!.isNotEmpty)
-                  _row(context, '机构', account.institution!),
-                if (account.type == 'stored') ...[
-                  _row(context, '默认消费类别', _defaultCategoryName(view)),
-                  _row(context, '近期流水', '批次 2 接入'),
-                ] else
-                  _row(context, '近期流水', '批次 2 接入'),
+                if (account.institution != null && account.institution!.isNotEmpty) _row(context, '机构', account.institution!),
+                if (account.type == 'stored') _row(context, '默认消费类别', _defaultCategoryName(view)),
+                if (account.type == 'credit') ...[
+                  _row(context, '信用额度', view.card?.creditLimit == null ? '未设置' : formatCents(view.card!.creditLimit!)),
+                  _row(context, '账单日', view.card?.billingDay == null ? '未设置' : '${view.card!.billingDay} 号'),
+                  _row(context, '还款日', view.card?.repaymentDay == null ? '未设置' : '${view.card!.repaymentDay} 号'),
+                ],
+                if (loan != null) ...[
+                  _row(context, '贷款类型', _loanKindLabel(loan.kind)),
+                  _row(context, '原始本金', formatCents(loan.originalPrincipal)),
+                  _row(context, '年利率', '${(loan.rateBp / 100).toStringAsFixed(2)}%'),
+                  _row(context, '总期数', '${loan.termMonths} 个月'),
+                  _row(context, '起贷日', formatDate(DateTime.fromMillisecondsSinceEpoch(loan.startAt))),
+                  _row(context, '下次还款', formatDate(DateTime.fromMillisecondsSinceEpoch(loan.nextDueAt))),
+                  if ((loan.perAmount ?? 0) > 0) _row(context, '每期还款', formatCents(loan.perAmount!)),
+                  _row(context, '还款方式', _repaymentMethodLabel(loan.repaymentMethod)),
+                ],
               ],
               if (account.note != null && account.note!.isNotEmpty) _row(context, '备注', account.note!),
-              SizedBox(height: tokens.space6),
+              SizedBox(height: tokens.space4),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text('近期流水', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: tokens.textPrimary)),
+                  ),
+                  Icon(LucideIcons.receipt, size: 16, color: tokens.textDisabled),
+                ],
+              ),
+              SizedBox(height: tokens.space1),
+              transactions.when(
+                loading: () => Padding(padding: EdgeInsets.all(tokens.space3), child: Text('加载中…', style: TextStyle(fontSize: 12, color: tokens.textSecondary))),
+                error: (error, stack) => Text('流水加载失败', style: TextStyle(fontSize: 12, color: tokens.expense)),
+                data: (rows) {
+                  if (rows.isEmpty) {
+                    return Padding(
+                      padding: EdgeInsets.symmetric(vertical: tokens.space3),
+                      child: Text('暂无流水', style: TextStyle(fontSize: 13, color: tokens.textSecondary)),
+                    );
+                  }
+                  return Column(
+                    children: [
+                      for (var i = 0; i < rows.length; i++) ...[
+                        _transactionRow(context, rows[i]),
+                        if (i < rows.length - 1) Divider(height: 1, color: tokens.divider),
+                      ],
+                    ],
+                  );
+                },
+              ),
+              SizedBox(height: tokens.space5),
+              if (account.type == 'stored') ...[
+                FilledButton.icon(
+                  onPressed: () => Navigator.of(context).pop(AccountDetailAction.recharge),
+                  icon: const Icon(LucideIcons.plus, size: 18),
+                  label: const Text('充值'),
+                  style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+                ),
+                SizedBox(height: tokens.space2),
+              ],
+              if (account.type == 'credit' || account.type == 'loan') ...[
+                FilledButton.icon(
+                  onPressed: () => Navigator.of(context).pop(AccountDetailAction.repay),
+                  icon: const Icon(LucideIcons.banknote, size: 18),
+                  label: const Text('还款'),
+                  style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+                ),
+                SizedBox(height: tokens.space2),
+              ],
+              if (deposit != null && !closed) ...[
+                FilledButton.icon(
+                  onPressed: () => Navigator.of(context).pop(AccountDetailAction.settleMaturity),
+                  icon: const Icon(LucideIcons.piggyBank, size: 18),
+                  label: const Text('到期支取'),
+                  style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+                ),
+                SizedBox(height: tokens.space2),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.of(context).pop(AccountDetailAction.settleEarly),
+                        style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(46), side: BorderSide(color: tokens.border), foregroundColor: tokens.textPrimary),
+                        child: const Text('提前支取'),
+                      ),
+                    ),
+                    SizedBox(width: tokens.space2),
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.of(context).pop(AccountDetailAction.renew),
+                        style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(46), side: BorderSide(color: tokens.border), foregroundColor: tokens.textPrimary),
+                        child: const Text('转存'),
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: tokens.space2),
+              ],
               Row(
                 children: [
                   Expanded(
                     child: OutlinedButton.icon(
                       onPressed: () => Navigator.of(context).pop(AccountDetailAction.edit),
-                      icon: Icon(LucideIcons.pencil, size: 18),
+                      icon: const Icon(LucideIcons.pencil, size: 18),
                       label: const Text('编辑'),
                       style: OutlinedButton.styleFrom(
                         minimumSize: const Size.fromHeight(48),
@@ -153,12 +235,9 @@ class _AccountDetailSheet extends StatelessWidget {
                   Expanded(
                     child: TextButton.icon(
                       onPressed: () => Navigator.of(context).pop(AccountDetailAction.delete),
-                      icon: Icon(LucideIcons.trash2, size: 18),
+                      icon: const Icon(LucideIcons.trash2, size: 18),
                       label: const Text('删除'),
-                      style: TextButton.styleFrom(
-                        minimumSize: const Size.fromHeight(48),
-                        foregroundColor: tokens.expense,
-                      ),
+                      style: TextButton.styleFrom(minimumSize: const Size.fromHeight(48), foregroundColor: tokens.expense),
                     ),
                   ),
                 ],
@@ -166,6 +245,64 @@ class _AccountDetailSheet extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _transactionRow(BuildContext context, TransactionRow transaction) {
+    final tokens = context.tokens;
+    final type = transaction.type;
+    final amount = transaction.amount;
+    final isIncome = type == 'income';
+    final isTransfer = type == 'transfer';
+    final incomingTransfer = isTransfer && transaction.toAccountId == view.account.id;
+    final categoryId = transaction.categoryId;
+    final categoryName = categoryNames[categoryId] ?? (isTransfer ? '账户转账' : '其他');
+    final signedAmount = isTransfer ? (incomingTransfer ? amount : -amount) : (isIncome ? amount : -amount);
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: tokens.space2),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        categoryName,
+                        style: TextStyle(fontSize: 14, color: tokens.textPrimary),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (transaction.locked)
+                      Container(
+                        margin: const EdgeInsets.only(left: 6),
+                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                        decoration: BoxDecoration(color: tokens.surface2, borderRadius: BorderRadius.circular(4)),
+                        child: Text('内部', style: TextStyle(fontSize: 9, color: tokens.textSecondary)),
+                      ),
+                  ],
+                ),
+                SizedBox(height: 1),
+                Text(
+                  formatDate(DateTime.fromMillisecondsSinceEpoch(transaction.occurredAt)),
+                  style: TextStyle(fontSize: 11, color: tokens.textSecondary),
+                ),
+              ],
+            ),
+          ),
+          Text(
+            '${signedAmount >= 0 ? '+' : '-'}${formatCents(signedAmount.abs())}',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: signedAmount >= 0 ? tokens.income : tokens.expense,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -186,11 +323,7 @@ class _AccountDetailSheet extends StatelessWidget {
           Text(label, style: TextStyle(fontSize: 14, color: tokens.textSecondary)),
           const Spacer(),
           Flexible(
-            child: Text(
-              value,
-              textAlign: TextAlign.right,
-              style: TextStyle(fontSize: 14, color: tokens.textPrimary),
-            ),
+            child: Text(value, textAlign: TextAlign.right, style: TextStyle(fontSize: 14, color: tokens.textPrimary)),
           ),
         ],
       ),

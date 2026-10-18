@@ -8,12 +8,14 @@ class AccountWithBalance {
     required this.balance,
     this.card,
     this.loan,
+    this.deposit,
   });
 
   final Account account;
   final int balance;
   final CardDetailRow? card;
   final LoanDetailRow? loan;
+  final DepositDetailRow? deposit;
 }
 
 class AccountRepository {
@@ -35,8 +37,10 @@ class AccountRepository {
     final rows = await db.select(db.transactions).get();
     final cards = await db.select(db.cardDetails).get();
     final loans = await db.select(db.loanDetails).get();
+    final deposits = await db.select(db.depositDetails).get();
     final cardMap = {for (final c in cards) c.accountId: c};
     final loanMap = {for (final l in loans) l.accountId: l};
+    final depositMap = {for (final d in deposits) d.accountId: d};
     return accounts.map((account) {
       var balance = account.openingBalance;
       for (final t in rows) {
@@ -50,6 +54,7 @@ class AccountRepository {
         balance: balance,
         card: cardMap[account.id],
         loan: loanMap[account.id],
+        deposit: depositMap[account.id],
       );
     }).toList();
   }
@@ -63,7 +68,9 @@ class AccountRepository {
   }
 
   Future<bool> hasTransactions(int id) async {
-    final rows = await (db.select(db.transactions)..where((t) => t.accountId.equals(id))).get();
+    final rows = await (db.select(db.transactions)
+          ..where((t) => t.accountId.equals(id) | t.toAccountId.equals(id)))
+        .get();
     return rows.isNotEmpty;
   }
 
@@ -85,6 +92,7 @@ class AccountRepository {
     await db.transaction(() async {
       await (db.delete(db.cardDetails)..where((t) => t.accountId.equals(id))).go();
       await (db.delete(db.loanDetails)..where((t) => t.accountId.equals(id))).go();
+      await (db.delete(db.depositDetails)..where((t) => t.accountId.equals(id))).go();
       await (db.delete(db.accounts)..where((t) => t.id.equals(id))).go();
     });
     return true;
@@ -141,6 +149,62 @@ class AccountRepository {
             defaultCategoryId: Value(defaultCategoryId),
           ));
       return accountId;
+    });
+  }
+
+  Future<int> createCreditAccount({
+    required String name,
+    String? institution,
+    int openingDebt = 0,
+    int? creditLimit,
+    int? billingDay,
+    int? repaymentDay,
+    String? note,
+  }) async {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    return db.transaction(() async {
+      final accountId = await db.into(db.accounts).insert(AccountsCompanion.insert(
+            type: 'credit',
+            name: name,
+            institution: Value(institution),
+            icon: 'credit',
+            openingBalance: Value(-openingDebt.abs()),
+            note: Value(note),
+            createdAt: Value(now),
+          ));
+      await db.into(db.cardDetails).insert(CardDetailsCompanion.insert(
+            accountId: Value(accountId),
+            creditLimit: Value(creditLimit),
+            billingDay: Value(billingDay),
+            repaymentDay: Value(repaymentDay),
+          ));
+      return accountId;
+    });
+  }
+
+  Future<void> updateCreditAccount(
+    int id, {
+    required String name,
+    String? institution,
+    int? creditLimit,
+    int? billingDay,
+    int? repaymentDay,
+    String? note,
+  }) async {
+    await db.transaction(() async {
+      await (db.update(db.accounts)..where((t) => t.id.equals(id))).write(AccountsCompanion(
+        name: Value(name),
+        institution: Value(institution),
+        note: Value(note),
+        updatedAt: Value(DateTime.now().millisecondsSinceEpoch),
+      ));
+      await (db.update(db.cardDetails)..where((t) => t.accountId.equals(id))).write(
+        CardDetailsCompanion(
+          creditLimit: Value(creditLimit),
+          billingDay: Value(billingDay),
+          repaymentDay: Value(repaymentDay),
+        ),
+      );
     });
   }
 

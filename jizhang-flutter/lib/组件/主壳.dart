@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../主题/令牌.dart';
+import '记账表单.dart';
 
 class AppShell extends StatelessWidget {
   const AppShell({super.key, required this.navigationShell});
@@ -23,42 +24,7 @@ class AppShell extends StatelessWidget {
             initialLocation: index == navigationShell.currentIndex,
           );
         },
-        onAdd: () => _openRecordPlaceholder(context),
-      ),
-    );
-  }
-
-  Future<void> _openRecordPlaceholder(BuildContext context) async {
-    final tokens = context.tokens;
-    await showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      builder: (context) => SafeArea(
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(
-            tokens.space4,
-            tokens.space2,
-            tokens.space4,
-            tokens.space6,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text('记一笔', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: tokens.textPrimary)),
-              SizedBox(height: tokens.space2),
-              Text(
-                '批次 2 接入金额、类别、账户、日期、图片与备注。',
-                style: TextStyle(fontSize: 13, color: tokens.textSecondary, height: 1.5),
-              ),
-              SizedBox(height: tokens.space4),
-              FilledButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('知道了'),
-              ),
-            ],
-          ),
-        ),
+        onAdd: () => showRecordSheet(context),
       ),
     );
   }

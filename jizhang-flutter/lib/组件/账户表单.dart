@@ -15,6 +15,7 @@ Future<void> showAccountForm(
 }) {
   return showModalBottomSheet<void>(
     context: context,
+    useRootNavigator: true,
     isScrollControlled: true,
     useSafeArea: true,
     backgroundColor: Colors.transparent,
@@ -45,6 +46,10 @@ class _AccountFormSheetState extends ConsumerState<AccountFormSheet> {
   final _note = TextEditingController();
   final _startAt = TextEditingController();
   final _nextDueAt = TextEditingController();
+  final _creditDebt = TextEditingController();
+  final _creditLimit = TextEditingController();
+  final _billingDay = TextEditingController();
+  final _repaymentDay = TextEditingController();
   int? _defaultCategoryId;
   String _loanKind = 'mortgage';
   String _repaymentMethod = 'equal_principal_interest';
@@ -56,6 +61,8 @@ class _AccountFormSheetState extends ConsumerState<AccountFormSheet> {
     if (account == null) return widget.kind;
     if (account.type == 'loan') return AccountKind.loan;
     if (account.type == 'stored') return AccountKind.stored;
+    if (account.type == 'credit') return AccountKind.credit;
+    if (account.type == 'deposit') return AccountKind.deposit;
     return AccountKind.bank;
   }
 
@@ -69,6 +76,10 @@ class _AccountFormSheetState extends ConsumerState<AccountFormSheet> {
       _note.text = view.account.note ?? '';
       _balance.text = (view.balance / 100).toStringAsFixed(2);
       _defaultCategoryId = view.card?.defaultCategoryId;
+      _creditDebt.text = (view.balance.abs() / 100).toStringAsFixed(2);
+      _creditLimit.text = view.card?.creditLimit == null ? '' : (view.card!.creditLimit! / 100).toStringAsFixed(2);
+      _billingDay.text = view.card?.billingDay?.toString() ?? '';
+      _repaymentDay.text = view.card?.repaymentDay?.toString() ?? '';
       final loan = view.loan;
       if (loan != null) {
         _loanKind = loan.kind;
@@ -106,14 +117,19 @@ class _AccountFormSheetState extends ConsumerState<AccountFormSheet> {
     _note.dispose();
     _startAt.dispose();
     _nextDueAt.dispose();
+    _creditDebt.dispose();
+    _creditLimit.dispose();
+    _billingDay.dispose();
+    _repaymentDay.dispose();
     super.dispose();
   }
-
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     final isLoan = _kind == AccountKind.loan;
     final isStored = _kind == AccountKind.stored;
+    final isCredit = _kind == AccountKind.credit;
+    final isDeposit = _kind == AccountKind.deposit;
     final categories = ref.watch(categoriesProvider).valueOrNull ?? const [];
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
     return Padding(
@@ -163,20 +179,27 @@ class _AccountFormSheetState extends ConsumerState<AccountFormSheet> {
                     TextFormField(
                       controller: _name,
                       maxLength: 20,
-                      decoration: _decoration(context, _kind == AccountKind.loan ? '如：招商银行房贷' : (_kind == AccountKind.stored ? '如：银座购物卡' : '如：招商银行卡')),
+                      decoration: _decoration(
+                        context,
+                        _kind == AccountKind.loan
+                            ? '如：招商银行房贷'
+                            : (_kind == AccountKind.stored
+                                ? '如：银座购物卡'
+                                : (_kind == AccountKind.credit ? '如：招商银行信用卡' : '如：招商银行卡')),
+                      ),
                       validator: (value) {
                         if ((value ?? '').trim().isEmpty) return '请输入账户名称';
                         return null;
                       },
                     ),
                     SizedBox(height: tokens.space2),
-                    _label(context, isStored ? '商户 / 平台' : (isLoan ? '贷款机构' : '开户行 / 平台')),
+                    _label(context, isStored ? '商户 / 平台' : (isLoan ? '贷款机构' : (isCredit ? '发卡行 / 平台' : '开户行 / 平台'))),
                     TextFormField(
                       controller: _institution,
                       maxLength: 20,
                       decoration: _decoration(context, isStored ? '如：银座' : '如：招商银行'),
                     ),
-                    if (!isLoan && !_editing) ...[
+                    if (!isLoan && !isCredit && !isDeposit && !_editing) ...[
                       _label(context, '期初余额'),
                       TextFormField(
                         controller: _balance,
@@ -190,7 +213,7 @@ class _AccountFormSheetState extends ConsumerState<AccountFormSheet> {
                         },
                       ),
                     ],
-                    if (!isLoan && _editing) ...[
+                    if (!isLoan && !isCredit && !isDeposit && _editing) ...[
                       _label(context, '当前余额'),
                       InputDecorator(
                         decoration: _decoration(context, ''),
@@ -223,6 +246,55 @@ class _AccountFormSheetState extends ConsumerState<AccountFormSheet> {
                       Text(
                         '记账选择这张储值卡时，默认选中该类别',
                         style: TextStyle(fontSize: 12, color: tokens.textSecondary),
+                      ),
+                    ],
+                    if (isCredit) ...[
+                      if (!_editing) ...[
+                        _label(context, '当前待还'),
+                        TextFormField(
+                          controller: _creditDebt,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
+                          decoration: _decoration(context, '0.00'),
+                          validator: (value) => parseYuanToCents(value ?? '') < 0 ? '待还不能为负' : null,
+                        ),
+                      ] else ...[
+                        _label(context, '当前待还'),
+                        InputDecorator(
+                          decoration: _decoration(context, ''),
+                          child: Text(formatCents(widget.account!.balance.abs()), style: TextStyle(fontSize: 15, color: tokens.textPrimary)),
+                        ),
+                        SizedBox(height: tokens.space1),
+                        Text('待还金额由信用卡消费和还款流水自动变化', style: TextStyle(fontSize: 12, color: tokens.textSecondary)),
+                      ],
+                      _label(context, '信用额度（选填）'),
+                      TextFormField(
+                        controller: _creditLimit,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
+                        decoration: _decoration(context, '如：50000.00'),
+                      ),
+                      _label(context, '账单日（选填）'),
+                      TextFormField(
+                        controller: _billingDay,
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                        decoration: _decoration(context, '1-31'),
+                        validator: (value) => _validateDay(value) ? null : '请输入 1-31',
+                      ),
+                      _label(context, '还款日（选填）'),
+                      TextFormField(
+                        controller: _repaymentDay,
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                        decoration: _decoration(context, '1-31'),
+                        validator: (value) => _validateDay(value) ? null : '请输入 1-31',
+                      ),
+                    ],
+                    if (isDeposit) ...[
+                      Text(
+                        '存单请使用「添加存单」表单填写本金、利率和存期。',
+                        style: TextStyle(fontSize: 13, color: tokens.textSecondary),
                       ),
                     ],
                     if (isLoan) ...[
@@ -396,8 +468,14 @@ class _AccountFormSheetState extends ConsumerState<AccountFormSheet> {
     );
   }
 
-  Future<void> _save() async {
-    if (!(_formKey.currentState?.validate() ?? false)) return;
+  bool _validateDay(String? value) {
+    final text = (value ?? '').trim();
+    if (text.isEmpty) return true;
+    final day = int.tryParse(text);
+    return day != null && day >= 1 && day <= 31;
+  }
+
+  Future<void> _save() async {    if (!(_formKey.currentState?.validate() ?? false)) return;
     final repository = ref.read(accountRepositoryProvider);
     final name = _name.text.trim();
     final messenger = ScaffoldMessenger.of(context);
@@ -474,6 +552,34 @@ class _AccountFormSheetState extends ConsumerState<AccountFormSheet> {
             note: _note.text.trim(),
           );
         }
+      } else if (_kind == AccountKind.credit) {
+        final limit = _creditLimit.text.trim().isEmpty ? null : parseYuanToCents(_creditLimit.text);
+        final billing = _billingDay.text.trim().isEmpty ? null : int.tryParse(_billingDay.text.trim());
+        final repayment = _repaymentDay.text.trim().isEmpty ? null : int.tryParse(_repaymentDay.text.trim());
+        if (_editing) {
+          await repository.updateCreditAccount(
+            widget.account!.account.id,
+            name: name,
+            institution: _institution.text.trim(),
+            creditLimit: limit,
+            billingDay: billing,
+            repaymentDay: repayment,
+            note: _note.text.trim(),
+          );
+        } else {
+          await repository.createCreditAccount(
+            name: name,
+            institution: _institution.text.trim(),
+            openingDebt: parseYuanToCents(_creditDebt.text),
+            creditLimit: limit,
+            billingDay: billing,
+            repaymentDay: repayment,
+            note: _note.text.trim(),
+          );
+        }
+      } else if (_kind == AccountKind.deposit) {
+        messenger.showSnackBar(const SnackBar(content: Text('请使用添加存单表单')));
+        return;
       } else {
         if (_editing) {
           await repository.updateBankAccount(
@@ -492,6 +598,8 @@ class _AccountFormSheetState extends ConsumerState<AccountFormSheet> {
         }
       }
       ref.invalidate(accountsProvider);
+      ref.invalidate(homeProvider);
+      ref.invalidate(reportDataProvider);
       if (!mounted) return;
       Navigator.of(context).pop();
       messenger.showSnackBar(SnackBar(content: Text(_editing ? '已更新${_kind.label}' : '已添加${_kind.label}')));

@@ -6,6 +6,10 @@ import '../组件/页面骨架.dart';
 import '../组件/账户详情.dart';
 import '../组件/账户展示.dart';
 import '../组件/账户表单.dart';
+import '../组件/存单表单.dart';
+import '../组件/存单动作.dart';
+import '../组件/充值表单.dart';
+import '../组件/还款表单.dart';
 import '../数据/仓库/账户仓库.dart';
 import '../状态/提供者.dart';
 import '../主题/令牌.dart';
@@ -44,6 +48,7 @@ class AssetsPage extends ConsumerWidget {
             accounts: list,
             categoryNames: categoryNames,
             onTap: (view) => _openDetail(context, ref, view, categoryNames),
+            onAddDeposit: () => showDepositForm(context),
           );
         },
       ),
@@ -53,12 +58,17 @@ class AssetsPage extends ConsumerWidget {
   Future<void> _addAccount(BuildContext context) async {
     final kind = await showModalBottomSheet<AccountKind>(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       useSafeArea: true,
       showDragHandle: true,
       builder: (_) => const _AddAccountSheet(),
     );
     if (kind == null || !context.mounted) return;
+    if (kind == AccountKind.deposit) {
+      await showDepositForm(context);
+      return;
+    }
     await showAccountForm(context, kind: kind);
   }
 
@@ -70,10 +80,32 @@ class AssetsPage extends ConsumerWidget {
   ) async {
     final action = await showAccountDetail(context, view, categoryNames: categoryNames);
     if (action == null || !context.mounted) return;
+    if (action == AccountDetailAction.recharge) {
+      await showRechargeSheet(context, view);
+      return;
+    }
+    if (action == AccountDetailAction.repay) {
+      await showRepaySheet(context, view);
+      return;
+    }
+    if (action == AccountDetailAction.settleEarly || action == AccountDetailAction.settleMaturity) {
+      await showDepositSettleSheet(context, view, mode: action == AccountDetailAction.settleEarly ? 'early' : 'maturity');
+      return;
+    }
+    if (action == AccountDetailAction.renew) {
+      await showDepositRenewSheet(context, view);
+      return;
+    }
     if (action == AccountDetailAction.edit) {
+      if (view.account.type == 'deposit') {
+        await showDepositForm(context, account: view);
+        return;
+      }
       final kind = view.account.type == 'loan'
           ? AccountKind.loan
-          : (view.account.type == 'stored' ? AccountKind.stored : AccountKind.bank);
+          : (view.account.type == 'stored'
+              ? AccountKind.stored
+              : (view.account.type == 'credit' ? AccountKind.credit : AccountKind.bank));
       await showAccountForm(context, kind: kind, account: view);
       return;
     }
@@ -96,8 +128,12 @@ class AssetsPage extends ConsumerWidget {
       ),
     );
     if (confirmed != true || !context.mounted) return;
-    final deleted = await ref.read(accountRepositoryProvider).deleteOrArchiveAccount(view.account.id);
+    final deleted = view.account.type == 'deposit'
+        ? await ref.read(assetRepositoryProvider).deleteDeposit(view.account.id)
+        : await ref.read(accountRepositoryProvider).deleteOrArchiveAccount(view.account.id);
     ref.invalidate(accountsProvider);
+    ref.invalidate(homeProvider);
+    ref.invalidate(reportDataProvider);
     if (!context.mounted) return;
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
@@ -106,19 +142,26 @@ class AssetsPage extends ConsumerWidget {
 }
 
 class _AccountGroups extends StatelessWidget {
-  const _AccountGroups({required this.accounts, required this.categoryNames, required this.onTap});
+  const _AccountGroups({
+    required this.accounts,
+    required this.categoryNames,
+    required this.onTap,
+    required this.onAddDeposit,
+  });
 
   final List<AccountWithBalance> accounts;
   final Map<int, String> categoryNames;
   final ValueChanged<AccountWithBalance> onTap;
+  final VoidCallback onAddDeposit;
 
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
+    final deposits = accounts.where((a) => a.account.type == 'deposit').toList();
     final groups = <String, List<AccountWithBalance>>{
       '账户': accounts.where((a) => ['bank', 'ewallet', 'cash'].contains(a.account.type)).toList(),
       '储值卡': accounts.where((a) => a.account.type == 'stored').toList(),
-      '存单': accounts.where((a) => a.account.type == 'deposit').toList(),
+      '存单': deposits,
       '信用卡': accounts.where((a) => a.account.type == 'credit').toList(),
       '贷款': accounts.where((a) => a.account.type == 'loan').toList(),
     };
@@ -126,13 +169,37 @@ class _AccountGroups extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         for (final entry in groups.entries)
-          if (entry.value.isNotEmpty) ...[
+          if (entry.key == '存单') ...[
+            Row(
+              children: [
+                Expanded(child: Text('存单', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: tokens.textPrimary))),
+                TextButton(onPressed: onAddDeposit, child: const Text('添加存单')),
+              ],
+            ),
+            if (deposits.isEmpty)
+              Container(
+                padding: EdgeInsets.symmetric(vertical: tokens.space6, horizontal: tokens.space4),
+                decoration: BoxDecoration(color: tokens.bg, border: Border.all(color: tokens.border), borderRadius: BorderRadius.circular(tokens.radiusLg)),
+                child: Column(
+                  children: [
+                    Icon(LucideIcons.piggyBank, size: 26, color: tokens.textDisabled),
+                    SizedBox(height: tokens.space2),
+                    Text('还没有存单', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: tokens.textPrimary)),
+                    SizedBox(height: tokens.space1),
+                    Text('添加一张存单，到期前会提醒你', style: TextStyle(fontSize: 12, color: tokens.textSecondary)),
+                  ],
+                ),
+              )
+            else
+              for (final view in deposits)
+                Padding(
+                  padding: EdgeInsets.only(bottom: tokens.space2),
+                  child: _DepositCard(view: view, onTap: () => onTap(view)),
+                ),
+          ] else if (entry.value.isNotEmpty) ...[
             Padding(
               padding: EdgeInsets.only(top: tokens.space2, bottom: tokens.space2),
-              child: Text(
-                entry.key,
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: tokens.textPrimary),
-              ),
+              child: Text(entry.key, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: tokens.textPrimary)),
             ),
             Container(
               decoration: BoxDecoration(
@@ -148,14 +215,126 @@ class _AccountGroups extends StatelessWidget {
                       categoryNames: categoryNames,
                       onTap: () => onTap(entry.value[i]),
                     ),
-                    if (i < entry.value.length - 1)
-                      Divider(height: 1, indent: 60, color: tokens.divider),
+                    if (i < entry.value.length - 1) Divider(height: 1, indent: 60, color: tokens.divider),
                   ],
                 ],
               ),
             ),
           ],
+        SizedBox(height: tokens.space3),
       ],
+    );
+  }
+}
+
+class _DepositCard extends StatelessWidget {
+  const _DepositCard({required this.view, required this.onTap});
+
+  final AccountWithBalance view;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final detail = view.deposit;
+    if (detail == null) return const SizedBox.shrink();
+    final today = DateTime.now();
+    final maturity = DateTime.fromMillisecondsSinceEpoch(detail.maturityAt);
+    final start = DateTime.fromMillisecondsSinceEpoch(detail.startAt);
+    final closed = detail.closedAt != null;
+    final days = DateTime(maturity.year, maturity.month, maturity.day)
+        .difference(DateTime(today.year, today.month, today.day))
+        .inDays;
+    final status = closed
+        ? (detail.closeType == 'renew' ? '已转存' : '已支取')
+        : (days < 0 ? '已到期' : (days == 0 ? '今天到期' : '存续中'));
+    final statusColor = closed ? tokens.textSecondary : (days <= 0 ? tokens.liability : tokens.income);
+    final totalDays = maturity.difference(start).inDays;
+    final elapsed = today.difference(start).inDays;
+    final progress = closed ? 1.0 : (totalDays <= 0 ? 0.0 : (elapsed / totalDays).clamp(0.0, 1.0));
+    final interest = (detail.principal * detail.rateBp * detail.termMonths / (10000 * 12)).round();
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(tokens.radiusLg),
+      child: Container(
+        padding: EdgeInsets.all(tokens.space4),
+        decoration: BoxDecoration(color: tokens.bg, border: Border.all(color: tokens.border), borderRadius: BorderRadius.circular(tokens.radiusLg)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Icon(LucideIcons.piggyBank, size: 24, color: tokens.primary),
+                SizedBox(width: tokens.space2),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(view.account.name, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: tokens.textPrimary), overflow: TextOverflow.ellipsis),
+                      SizedBox(height: 2),
+                      Text(
+                        '${view.account.institution ?? '存单'} · ${(detail.rateBp / 100).toStringAsFixed(2)}% · ${detail.termMonths}个月',
+                        style: TextStyle(fontSize: 12, color: tokens.textSecondary),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(color: statusColor.withValues(alpha: .1), borderRadius: BorderRadius.circular(tokens.radiusFull)),
+                  child: Text(status, style: TextStyle(fontSize: 11, color: statusColor, fontWeight: FontWeight.w600)),
+                ),
+              ],
+            ),
+            SizedBox(height: tokens.space3),
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('本金', style: TextStyle(fontSize: 11, color: tokens.textSecondary)),
+                      Text(formatCents(detail.principal), style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: tokens.textPrimary, fontFeatures: const [FontFeature.tabularFigures()])),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text('预计利息', style: TextStyle(fontSize: 11, color: tokens.textSecondary)),
+                      Text(formatCents(interest), style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: tokens.income, fontFeatures: const [FontFeature.tabularFigures()])),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: tokens.space2),
+            Row(
+              children: [
+                Expanded(child: Text('${formatDate(start)} → ${formatDate(maturity)}', style: TextStyle(fontSize: 11, color: tokens.textSecondary))),
+                Text(
+                  closed ? status : (days >= 0 ? '剩余 $days 天' : '已到期'),
+                  style: TextStyle(fontSize: 11, color: statusColor),
+                ),
+              ],
+            ),
+            if (!closed) ...[
+              SizedBox(height: tokens.space2),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(tokens.radiusFull),
+                child: LinearProgressIndicator(
+                  value: progress,
+                  minHeight: 4,
+                  backgroundColor: tokens.surface2,
+                  valueColor: AlwaysStoppedAnimation(tokens.primary),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }
@@ -236,7 +415,7 @@ class _AddAccountSheet extends StatelessWidget {
           children: [
             Text('添加账户', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: tokens.textPrimary)),
             SizedBox(height: tokens.space1),
-            Text('批次 1：银行卡 / 储值卡 / 贷款', style: TextStyle(fontSize: 13, color: tokens.textSecondary)),
+            Text('银行卡 / 储值卡 / 信用卡 / 存单 / 贷款', style: TextStyle(fontSize: 13, color: tokens.textSecondary)),
             SizedBox(height: tokens.space3),
             for (final kind in AccountKind.values) ...[
               InkWell(
@@ -301,7 +480,7 @@ class _EmptyAccounts extends StatelessWidget {
           SizedBox(height: tokens.space3),
           Text('还没有账户', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: tokens.textPrimary)),
           SizedBox(height: tokens.space1),
-          Text('先添加一张银行卡、储值卡或贷款', style: TextStyle(fontSize: 13, color: tokens.textSecondary)),
+          Text('先添加一张银行卡、储值卡、信用卡或贷款', style: TextStyle(fontSize: 13, color: tokens.textSecondary)),
           SizedBox(height: tokens.space4),
           FilledButton(onPressed: onAdd, child: const Text('添加账户')),
         ],
