@@ -8,6 +8,7 @@ class HomeTransaction {
   const HomeTransaction({
     required this.transaction,
     required this.categoryName,
+    required this.categoryGroupName,
     required this.categoryIcon,
     required this.accountName,
     required this.accountType,
@@ -15,6 +16,7 @@ class HomeTransaction {
 
   final TransactionRow transaction;
   final String categoryName;
+  final String categoryGroupName;
   final String categoryIcon;
   final String accountName;
   final String accountType;
@@ -79,8 +81,7 @@ class HomeRepository {
     final accounts = await AccountRepository(db).listWithBalances();
     final accountMap = {for (final a in accounts) a.account.id: a};
     final categories = await CategoryRepository(db).listAll();
-    final categoryMap = {for (final c in categories) c.id: c.name};
-    final categoryIconMap = {for (final c in categories) c.id: c.icon};
+    final categoryById = {for (final c in categories) c.id: c};
     final rows = await TransactionRepository(db).listRecent(limit: 300, reportableOnly: false);
     final visible = rows.where((t) {
       final account = accountMap[t.accountId]?.account;
@@ -89,13 +90,20 @@ class HomeRepository {
     }).toList();
 
     final transactionViews = visible
-        .map((t) => HomeTransaction(
-              transaction: t,
-              categoryName: categoryMap[t.categoryId] ?? '其他',
-              categoryIcon: categoryIconMap[t.categoryId] ?? 'other',
-              accountName: accountMap[t.accountId]?.account.name ?? '',
-              accountType: accountMap[t.accountId]?.account.type ?? '',
-            ))
+        .map((t) {
+              final category = t.categoryId == null ? null : categoryById[t.categoryId];
+              final group = category == null
+                  ? null
+                  : (category.parentId == null ? category : categoryById[category.parentId]);
+              return HomeTransaction(
+                transaction: t,
+                categoryName: category?.name ?? group?.name ?? '其他',
+                categoryGroupName: group?.name ?? '',
+                categoryIcon: category?.icon ?? group?.icon ?? 'other',
+                accountName: accountMap[t.accountId]?.account.name ?? '',
+                accountType: accountMap[t.accountId]?.account.type ?? '',
+              );
+            })
         .toList();
 
     final groups = <String, List<HomeTransaction>>{};

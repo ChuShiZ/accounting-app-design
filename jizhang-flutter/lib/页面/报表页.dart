@@ -43,7 +43,7 @@ class _ReportPageState extends ConsumerState<ReportPage> {
         data: (data) {
           final filteredTop = _selectedCategory == null
               ? data.top
-              : data.top.where((item) => item.categoryName == _selectedCategory).toList();
+              : data.top.where((item) => item.categoryGroup == _selectedCategory).toList();
           final visibleTop = filteredTop.take(_showAllTop ? 20 : 8).toList();
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,

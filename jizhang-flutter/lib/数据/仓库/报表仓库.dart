@@ -29,12 +29,14 @@ class ReportItem {
   const ReportItem({
     required this.transaction,
     required this.categoryName,
+    required this.categoryGroup,
     required this.categoryIcon,
     required this.accountName,
   });
 
   final TransactionRow transaction;
   final String categoryName;
+  final String categoryGroup;
   final String categoryIcon;
   final String accountName;
 }
@@ -104,9 +106,13 @@ class ReportRepository {
     final rows = await _reportable();
     final categories = await db.select(db.categories).get();
     final accounts = await db.select(db.accounts).get();
-    final categoryMap = {for (final c in categories) c.id: c.name};
-    final categoryIconMap = {for (final c in categories) c.id: c.icon};
+    final categoryById = {for (final c in categories) c.id: c};
     final accountMap = {for (final a in accounts) a.id: a.name};
+    CategoryRow? groupFor(int? categoryId) {
+      final category = categoryId == null ? null : categoryById[categoryId];
+      if (category == null) return null;
+      return category.parentId == null ? category : categoryById[category.parentId];
+    }
 
     final current = rows.where((t) => _inRange(t, from, to)).toList();
     final currentKind = current.where((t) => t.type == kind).toList();
@@ -126,13 +132,15 @@ class ReportRepository {
 
     final categoryMapAmounts = <int?, ReportCategory>{};
     for (final t in currentKind) {
-      final key = t.categoryId;
+      final group = groupFor(t.categoryId);
+      final key = group?.id;
       final existing = categoryMapAmounts[key];
-      final name = categoryMap[key] ?? '其他';
+      final name = group?.name ?? '其他';
+      final icon = group?.icon ?? 'other';
       if (existing == null) {
         categoryMapAmounts[key] = ReportCategory(
           name: name,
-          icon: categoryIconMap[key] ?? 'other',
+          icon: icon,
           amount: t.amount,
           count: 1,
           pct: 0,
@@ -162,12 +170,17 @@ class ReportRepository {
     final top = currentKind
         .sorted((a, b) => b.amount.compareTo(a.amount))
         .take(20)
-        .map((t) => ReportItem(
-              transaction: t,
-              categoryName: categoryMap[t.categoryId] ?? '其他',
-              categoryIcon: categoryIconMap[t.categoryId] ?? 'other',
-              accountName: accountMap[t.accountId] ?? '',
-            ))
+        .map((t) {
+              final category = categoryById[t.categoryId];
+              final group = groupFor(t.categoryId);
+              return ReportItem(
+                transaction: t,
+                categoryName: category?.name ?? group?.name ?? '其他',
+                categoryGroup: group?.name ?? '其他',
+                categoryIcon: category?.icon ?? group?.icon ?? 'other',
+                accountName: accountMap[t.accountId] ?? '',
+              );
+            })
         .toList();
 
     final comparison = <ReportComparison>[];

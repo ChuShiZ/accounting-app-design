@@ -67,6 +67,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                   items: g.items.where((item) {
                     final t = item.transaction;
                     return item.categoryName.toLowerCase().contains(keyword) ||
+                        item.categoryGroupName.toLowerCase().contains(keyword) ||
                         (t.note ?? '').toLowerCase().contains(keyword) ||
                         item.accountName.toLowerCase().contains(keyword);
                   }).toList(),
@@ -327,6 +328,9 @@ class _FlowTile extends StatelessWidget {
     final time = DateTime.fromMillisecondsSinceEpoch(item.transaction.occurredAt);
     final hh = time.hour.toString().padLeft(2, '0');
     final mm = time.minute.toString().padLeft(2, '0');
+    final categoryTitle = item.categoryGroupName.isNotEmpty && item.categoryGroupName != item.categoryName
+        ? '${item.categoryGroupName} · ${item.categoryName}'
+        : item.categoryName;
     return InkWell(
       onTap: onTap,
       onLongPress: onLongPress,
@@ -341,7 +345,7 @@ class _FlowTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    item.categoryName,
+                    categoryTitle,
                     style: TextStyle(fontSize: 16, height: 1.2, fontWeight: FontWeight.w500, color: tokens.textPrimary),
                     overflow: TextOverflow.ellipsis,
                   ),

@@ -19,6 +19,13 @@ class CategoriesPage extends ConsumerStatefulWidget {
 
 class _CategoriesPageState extends ConsumerState<CategoriesPage> {
   String _type = 'expense';
+  final Set<int> _expanded = <int>{};
+
+  Future<void> _addChild(CategoryRow group) async {
+    await showCategoryForm(context, type: _type, parentId: group.id);
+    if (!mounted) return;
+    setState(() => _expanded.add(group.id));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -28,68 +35,88 @@ class _CategoriesPageState extends ConsumerState<CategoriesPage> {
     return Scaffold(
       backgroundColor: tokens.surface,
       body: PageScaffold(
-      title: '类别管理',
-      leading: IconButton(
-        onPressed: () => context.pop(),
-        icon: Icon(LucideIcons.arrowLeft, color: tokens.textPrimary),
-        tooltip: '返回',
-      ),
-      action: IconButton(
-        onPressed: () => showCategoryForm(context, type: _type),
-        icon: Icon(LucideIcons.plus, color: tokens.textPrimary),
-        tooltip: '新增类别',
-      ),
-      child: categoriesAsync.when(
-        loading: () => Padding(
-          padding: EdgeInsets.symmetric(vertical: tokens.space10),
-          child: Center(child: CircularProgressIndicator(strokeWidth: 2, color: tokens.primary)),
+        title: '类别管理',
+        leading: IconButton(
+          onPressed: () => context.pop(),
+          icon: Icon(LucideIcons.arrowLeft, color: tokens.textPrimary),
+          tooltip: '返回',
         ),
-        error: (error, stack) => Text('类别加载失败：$error', style: TextStyle(color: tokens.expense)),
-        data: (all) {
-          final list = all.where((c) => c.type == _type).toList();
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Center(
-                child: Container(
-                  width: 180,
-                  padding: const EdgeInsets.all(3),
-                  decoration: BoxDecoration(color: tokens.surface2, borderRadius: BorderRadius.circular(tokens.radiusFull)),
-                  child: Row(
-                    children: [
-                      _tab(context, 'expense', '支出'),
-                      _tab(context, 'income', '收入'),
-                    ],
+        action: IconButton(
+          onPressed: () => showCategoryForm(context, type: _type),
+          icon: Icon(LucideIcons.plus, color: tokens.textPrimary),
+          tooltip: '新增一级分类',
+        ),
+        child: categoriesAsync.when(
+          loading: () => Padding(
+            padding: EdgeInsets.symmetric(vertical: tokens.space10),
+            child: Center(child: CircularProgressIndicator(strokeWidth: 2, color: tokens.primary)),
+          ),
+          error: (error, stack) => Text('类别加载失败：$error', style: TextStyle(color: tokens.expense)),
+          data: (all) {
+            final list = all.where((c) => c.type == _type).toList();
+            final tops = list.where((c) => c.parentId == null).toList();
+            final children = <int, List<CategoryRow>>{};
+            for (final category in list) {
+              final parentId = category.parentId;
+              if (parentId != null) children.putIfAbsent(parentId, () => <CategoryRow>[]).add(category);
+            }
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(
+                  child: Container(
+                    width: 180,
+                    padding: const EdgeInsets.all(3),
+                    decoration: BoxDecoration(color: tokens.surface2, borderRadius: BorderRadius.circular(tokens.radiusFull)),
+                    child: Row(
+                      children: [
+                        _tab(context, 'expense', '支出'),
+                        _tab(context, 'income', '收入'),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-              SizedBox(height: tokens.space3),
-              Container(
-                decoration: BoxDecoration(color: tokens.bg, border: Border.all(color: tokens.border), borderRadius: BorderRadius.circular(tokens.radiusLg)),
-                child: Column(
-                  children: [
-                    for (var i = 0; i < list.length; i++) ...[
-                      _CategoryTile(
-                        category: list[i],
-                        usage: usage[list[i].id] ?? 0,
-                        onTap: () => showCategoryForm(context, category: list[i], type: list[i].type),
-                      ),
-                      if (i < list.length - 1) Divider(height: 1, indent: 56, color: tokens.divider),
-                    ],
-                  ],
+                SizedBox(height: tokens.space3),
+                if (tops.isEmpty)
+                  Container(
+                    padding: EdgeInsets.all(tokens.space6),
+                    decoration: BoxDecoration(color: tokens.bg, border: Border.all(color: tokens.border), borderRadius: BorderRadius.circular(tokens.radiusLg)),
+                    child: Center(child: Text('暂无类别', style: TextStyle(fontSize: 13, color: tokens.textSecondary))),
+                  )
+                else
+                  Container(
+                    decoration: BoxDecoration(color: tokens.bg, border: Border.all(color: tokens.border), borderRadius: BorderRadius.circular(tokens.radiusLg)),
+                    child: Column(
+                      children: [
+                        for (var i = 0; i < tops.length; i++) ...[
+                          _GroupTile(
+                            group: tops[i],
+                            children: children[tops[i].id] ?? const <CategoryRow>[],
+                            usage: usage,
+                            expanded: _expanded.contains(tops[i].id),
+                            onToggle: () => setState(() {
+                              if (!_expanded.remove(tops[i].id)) _expanded.add(tops[i].id);
+                            }),
+                            onEdit: () => showCategoryForm(context, category: tops[i], type: tops[i].type),
+                            onAddChild: tops[i].isFixed ? null : () => _addChild(tops[i]),
+                            onEditChild: (child) => showCategoryForm(context, category: child, type: child.type),
+                          ),
+                          if (i < tops.length - 1) Divider(height: 1, color: tokens.divider),
+                        ],
+                      ],
+                    ),
+                  ),
+                Padding(
+                  padding: EdgeInsets.symmetric(vertical: tokens.space3),
+                  child: Text(
+                    '一级分类用于报表汇总，二级分类用于日常记账。点击一级分类展开二级分类；点 + 新增二级分类，点铅笔编辑。删除已用类别时流水归入【其他】。',
+                    style: TextStyle(fontSize: 12, color: tokens.textSecondary, height: 1.5),
+                  ),
                 ),
-              ),
-              Padding(
-                padding: EdgeInsets.symmetric(vertical: tokens.space3),
-                child: Text(
-                  '点击类别可修改名称和图标；右上 + 新增类别。删除已用类别时流水归入【其他】。',
-                  style: TextStyle(fontSize: 12, color: tokens.textSecondary, height: 1.5),
-                ),
-              ),
-            ],
-          );
-        },
-      ),
+              ],
+            );
+          },
+        ),
       ),
     );
   }
@@ -118,45 +145,127 @@ class _CategoriesPageState extends ConsumerState<CategoriesPage> {
   }
 }
 
-class _CategoryTile extends StatelessWidget {
-  const _CategoryTile({required this.category, required this.usage, required this.onTap});
+class _GroupTile extends StatelessWidget {
+  const _GroupTile({
+    required this.group,
+    required this.children,
+    required this.usage,
+    required this.expanded,
+    required this.onToggle,
+    required this.onEdit,
+    required this.onAddChild,
+    required this.onEditChild,
+  });
 
-  final CategoryRow category;
-  final int usage;
-  final VoidCallback onTap;
+  final CategoryRow group;
+  final List<CategoryRow> children;
+  final Map<int, int> usage;
+  final bool expanded;
+  final VoidCallback onToggle;
+  final VoidCallback onEdit;
+  final VoidCallback? onAddChild;
+  final ValueChanged<CategoryRow> onEditChild;
+
+  int get _totalUsage {
+    var total = usage[group.id] ?? 0;
+    for (final child in children) {
+      total += usage[child.id] ?? 0;
+    }
+    return total;
+  }
 
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: tokens.space4, vertical: tokens.space3),
-        child: Row(
-          children: [
-            Icon(categoryIconData(category.icon), size: 24, color: categoryColor(category.icon)),
-            SizedBox(width: tokens.space3),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(category.name, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: tokens.textPrimary)),
-                  SizedBox(height: 1),
-                  Text('已用 $usage 笔', style: TextStyle(fontSize: 12, color: tokens.textSecondary)),
-                ],
+    return Column(
+      children: [
+        InkWell(
+          onTap: children.isEmpty ? onEdit : onToggle,
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(tokens.space3, tokens.space3, tokens.space2, tokens.space3),
+            child: Row(
+              children: [
+                Icon(categoryIconData(group.icon), size: 24, color: categoryColor(group.icon)),
+                SizedBox(width: tokens.space3),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        group.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: tokens.textPrimary),
+                      ),
+                      SizedBox(height: 1),
+                      Text(
+                        children.isEmpty ? '一级分类 · 已用 $_totalUsage 笔' : '${children.length} 个二级分类 · 已用 $_totalUsage 笔',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 12, color: tokens.textSecondary),
+                      ),
+                    ],
+                  ),
+                ),
+                if (group.isFixed)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(color: tokens.surface2, borderRadius: BorderRadius.circular(4)),
+                    child: Text('固定', style: TextStyle(fontSize: 10, color: tokens.textSecondary)),
+                  ),
+                if (onAddChild != null)
+                  IconButton(
+                    onPressed: onAddChild,
+                    icon: Icon(LucideIcons.plus, size: 18, color: tokens.textSecondary),
+                    tooltip: '新增二级分类',
+                    visualDensity: VisualDensity.compact,
+                    constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
+                    padding: EdgeInsets.zero,
+                  ),
+                IconButton(
+                  onPressed: onEdit,
+                  icon: Icon(LucideIcons.pencil, size: 17, color: tokens.textSecondary),
+                  tooltip: '编辑分类',
+                  visualDensity: VisualDensity.compact,
+                  constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
+                  padding: EdgeInsets.zero,
+                ),
+                if (children.isNotEmpty)
+                  Icon(
+                    expanded ? LucideIcons.chevronDown : LucideIcons.chevronRight,
+                    size: 18,
+                    color: tokens.textDisabled,
+                  ),
+              ],
+            ),
+          ),
+        ),
+        if (expanded)
+          for (final child in children)
+            InkWell(
+              onTap: () => onEditChild(child),
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(tokens.space4 + 30, tokens.space2, tokens.space3, tokens.space2),
+                child: Row(
+                  children: [
+                    Icon(categoryIconData(child.icon), size: 20, color: categoryColor(child.icon)),
+                    SizedBox(width: tokens.space2),
+                    Expanded(
+                      child: Text(
+                        child.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 14, color: tokens.textPrimary),
+                      ),
+                    ),
+                    Text('已用 ${usage[child.id] ?? 0} 笔', style: TextStyle(fontSize: 11, color: tokens.textSecondary)),
+                    SizedBox(width: tokens.space1),
+                    Icon(LucideIcons.chevronRight, size: 16, color: tokens.textDisabled),
+                  ],
+                ),
               ),
             ),
-            if (category.isFixed)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(color: tokens.surface2, borderRadius: BorderRadius.circular(4)),
-                child: Text('固定', style: TextStyle(fontSize: 10, color: tokens.textSecondary)),
-              ),
-            SizedBox(width: tokens.space1),
-            Icon(LucideIcons.chevronRight, size: 18, color: tokens.textDisabled),
-          ],
-        ),
-      ),
+      ],
     );
   }
 }

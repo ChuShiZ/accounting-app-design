@@ -131,6 +131,14 @@ class _AccountFormSheetState extends ConsumerState<AccountFormSheet> {
     final isCredit = _kind == AccountKind.credit;
     final isDeposit = _kind == AccountKind.deposit;
     final categories = ref.watch(categoriesProvider).valueOrNull ?? const [];
+    final categoryById = {for (final category in categories) category.id: category};
+    final expenseCategories = categories.where((c) => c.type == 'expense').toList();
+    final parentCategoryIds = expenseCategories.map((c) => c.parentId).whereType<int>().toSet();
+    final expenseDefaults = expenseCategories.where((c) => !parentCategoryIds.contains(c.id)).toList();
+    if (_defaultCategoryId != null && !expenseDefaults.any((c) => c.id == _defaultCategoryId)) {
+      final selected = categoryById[_defaultCategoryId];
+      if (selected != null) expenseDefaults.add(selected);
+    }
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
     return Padding(
       padding: EdgeInsets.only(bottom: bottomInset),
@@ -236,9 +244,16 @@ class _AccountFormSheetState extends ConsumerState<AccountFormSheet> {
                         icon: Icon(LucideIcons.chevronDown, color: tokens.textDisabled),
                         items: [
                           const DropdownMenuItem<int?>(value: null, child: Text('不设置')),
-                          ...categories
-                              .where((c) => c.type == 'expense')
-                              .map((c) => DropdownMenuItem<int?>(value: c.id, child: Text(c.name))),
+                          ...expenseDefaults.map((c) {
+                            final parent = c.parentId == null ? null : categoryById[c.parentId];
+                            return DropdownMenuItem<int?>(
+                              value: c.id,
+                              child: Text(
+                                parent == null ? c.name : '${parent.name} · ${c.name}',
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            );
+                          }),
                         ],
                         onChanged: (value) => setState(() => _defaultCategoryId = value),
                       ),

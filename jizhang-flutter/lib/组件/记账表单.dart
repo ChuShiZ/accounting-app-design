@@ -109,6 +109,8 @@ class _RecordSheetState extends ConsumerState<RecordSheet> {
     final allCategories = categoriesAsync.valueOrNull ?? const <CategoryRow>[];
     final accounts = _accountsFor(allAccounts);
     final categories = allCategories.where((c) => c.type == _type).toList();
+    final categoryById = {for (final category in categories) category.id: category};
+    final topCategories = categories.where((category) => category.parentId == null).toList();
     final specialDefault = allAccounts.where((a) => a.account.type == 'default').firstOrNull?.account.id;
     final preferredDefault = defaultAccount != null && allAccounts.any((a) => a.account.id == defaultAccount)
         ? defaultAccount
@@ -117,9 +119,20 @@ class _RecordSheetState extends ConsumerState<RecordSheet> {
     final account = _accountBy(accounts, accountId);
     final preferredCategory = _categoryId ??
         (account?.account.type == 'stored' && _type == 'expense' ? account?.card?.defaultCategoryId : null);
-    final categoryId = (preferredCategory != null && categories.any((c) => c.id == preferredCategory))
-        ? preferredCategory
-        : (categories.isNotEmpty ? categories.first.id : null);
+    var selectedCategory = preferredCategory == null ? null : categoryById[preferredCategory];
+    if (selectedCategory == null && topCategories.isNotEmpty) selectedCategory = topCategories.first;
+    var topCategory = selectedCategory == null
+        ? null
+        : (selectedCategory.parentId == null ? selectedCategory : categoryById[selectedCategory.parentId]);
+    if (topCategory == null && topCategories.isNotEmpty) {
+      topCategory = topCategories.first;
+      selectedCategory = topCategory;
+    }
+    final topCategoryId = topCategory?.id;
+    final subCategories = topCategoryId == null
+        ? const <CategoryRow>[]
+        : categories.where((category) => category.parentId == topCategoryId).toList();
+    final categoryId = selectedCategory?.id;
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
 
     return Padding(
@@ -145,13 +158,14 @@ class _RecordSheetState extends ConsumerState<RecordSheet> {
                   Expanded(
                     child: Text(
                       _editing ? '编辑流水' : '记一笔',
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: tokens.textPrimary),
+                      style: TextStyle(fontSize: 18, height: 1.2, fontWeight: FontWeight.w600, color: tokens.textPrimary),
                     ),
                   ),
                   IconButton(
                     onPressed: () => Navigator.of(context).pop(),
                     icon: Icon(LucideIcons.x, color: tokens.textSecondary),
                     tooltip: '关闭',
+                    visualDensity: VisualDensity.compact,
                   ),
                 ],
               ),
@@ -163,29 +177,25 @@ class _RecordSheetState extends ConsumerState<RecordSheet> {
                   padding: EdgeInsets.fromLTRB(tokens.space4, 0, tokens.space4, tokens.space4),
                   children: [
                     _typeSwitch(context),
-                    SizedBox(height: tokens.space3),
+                    SizedBox(height: tokens.space2),
+                    Text('金额', style: TextStyle(fontSize: 11, height: 1.2, color: tokens.textSecondary)),
                     Container(
-                      padding: EdgeInsets.symmetric(horizontal: tokens.space3, vertical: tokens.space2),
-                      decoration: BoxDecoration(
-                        color: tokens.bg,
-                        borderRadius: BorderRadius.circular(tokens.radiusMd),
-                        border: Border.all(color: tokens.border),
-                      ),
+                      decoration: BoxDecoration(border: Border(bottom: BorderSide(color: tokens.border))),
                       child: Row(
                         children: [
-                          Text('¥', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600, color: tokens.textSecondary)),
+                          Text('¥', style: TextStyle(fontSize: 20, height: 1.2, fontWeight: FontWeight.w600, color: tokens.textSecondary)),
                           SizedBox(width: tokens.space2),
                           Expanded(
                             child: TextFormField(
                               controller: _amount,
                               keyboardType: const TextInputType.numberWithOptions(decimal: true),
                               inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
-                              textAlign: TextAlign.right,
-                              style: TextStyle(fontSize: 32, fontWeight: FontWeight.w700, color: tokens.textPrimary),
+                              style: TextStyle(fontSize: 26, height: 1.2, fontWeight: FontWeight.w700, color: tokens.textPrimary),
                               decoration: const InputDecoration(
                                 hintText: '0.00',
                                 border: InputBorder.none,
                                 isDense: true,
+                                contentPadding: EdgeInsets.symmetric(vertical: 8),
                               ),
                               validator: (value) => parseYuanToCents(value ?? '') <= 0 ? '请输入金额' : null,
                             ),
@@ -193,101 +203,199 @@ class _RecordSheetState extends ConsumerState<RecordSheet> {
                         ],
                       ),
                     ),
+                    SizedBox(height: tokens.space2),
+                    Row(
+                      children: [
+                        Text('类别', style: TextStyle(fontSize: 11, height: 1.2, color: tokens.textSecondary)),
+                        const Spacer(),
+                        Text('一级 / 二级', style: TextStyle(fontSize: 10, height: 1.2, color: tokens.textDisabled)),
+                      ],
+                    ),
                     SizedBox(height: tokens.space1),
-                    Text('金额', style: TextStyle(fontSize: 12, color: tokens.textSecondary)),
-                    _label(context, '类别'),
-                    Wrap(
-                      spacing: tokens.space2,
-                      runSpacing: tokens.space2,
-                      children: categories.map((category) {
-                        final selected = category.id == categoryId;
-                        final color = categoryColor(category.icon);
-                        return InkWell(
-                          onTap: () => setState(() => _categoryId = category.id),
-                          borderRadius: BorderRadius.circular(tokens.radiusFull),
-                          child: Container(
-                            padding: EdgeInsets.symmetric(horizontal: tokens.space3, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: selected ? tokens.primaryLight : tokens.bg,
+                    if (topCategories.isEmpty)
+                      Text('暂无可用类别，请先到类别管理添加', style: TextStyle(fontSize: 12, color: tokens.textSecondary))
+                    else ...[
+                      SizedBox(
+                        height: 34,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: topCategories.length,
+                          separatorBuilder: (context, index) => SizedBox(width: 6),
+                          itemBuilder: (context, index) {
+                            final top = topCategories[index];
+                            final active = top.id == topCategory?.id;
+                            return InkWell(
+                              onTap: () => setState(() => _categoryId = top.id),
                               borderRadius: BorderRadius.circular(tokens.radiusFull),
-                              border: Border.all(color: selected ? tokens.primary : tokens.border),
+                              child: Container(
+                                padding: EdgeInsets.symmetric(horizontal: 10),
+                                decoration: BoxDecoration(
+                                  color: active ? tokens.primaryLight : tokens.surface2,
+                                  borderRadius: BorderRadius.circular(tokens.radiusFull),
+                                  border: Border.all(color: active ? tokens.primary : Colors.transparent),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(categoryIconData(top.icon), size: 16, color: categoryColor(top.icon)),
+                                    SizedBox(width: 4),
+                                    Text(
+                                      top.name,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        height: 1.2,
+                                        color: active ? tokens.primary : tokens.textPrimary,
+                                        fontWeight: active ? FontWeight.w600 : FontWeight.w400,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      if (topCategory != null && subCategories.isNotEmpty) ...[
+                        SizedBox(height: 6),
+                        SizedBox(
+                          height: subCategories.length + 1 <= 5 ? 60 : 122,
+                          child: GridView.builder(
+                            padding: EdgeInsets.zero,
+                            itemCount: subCategories.length + 1,
+                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 5,
+                              mainAxisSpacing: 2,
+                              crossAxisSpacing: 2,
+                              childAspectRatio: 1.1,
                             ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(categoryIconData(category.icon), size: 24, color: color),
-                                SizedBox(width: 5),
-                                Text(
-                                  category.name,
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: selected ? tokens.primary : tokens.textPrimary,
-                                    fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                            itemBuilder: (context, index) {
+                              final top = topCategory!;
+                              final category = index == 0 ? top : subCategories[index - 1];
+                              final selected = category.id == categoryId;
+                              return InkWell(
+                                onTap: () => setState(() => _categoryId = category.id),
+                                borderRadius: BorderRadius.circular(tokens.radiusMd),
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: selected ? tokens.primaryLight : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(tokens.radiusMd),
+                                    border: Border.all(color: selected ? tokens.primary : Colors.transparent),
+                                  ),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(categoryIconData(category.icon), size: 24, color: categoryColor(category.icon)),
+                                      SizedBox(height: 2),
+                                      Text(
+                                        index == 0 ? '不细分' : category.name,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          height: 1.1,
+                                          color: selected ? tokens.primary : tokens.textPrimary,
+                                          fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
-                              ],
-                            ),
+                              );
+                            },
                           ),
-                        );
-                      }).toList(),
-                    ),
-                    _label(context, '账户 / 卡片'),
-                    DropdownButtonFormField<int>(
-                      key: ValueKey('account-$accountId'),
-                      initialValue: accountId,
-                      isExpanded: true,
-                      decoration: _decoration(context, ''),
-                      icon: Icon(LucideIcons.chevronDown, color: tokens.textDisabled),
-                      items: accounts
-                          .map((a) => DropdownMenuItem(
-                                value: a.account.id,
-                                child: Text(
-                                  a.account.id == preferredDefault ? '${a.account.name}（默认）' : a.account.name,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ))
-                          .toList(),
-                      onChanged: (value) {
-                        if (value == null) return;
-                        final selected = _accountBy(accounts, value);
-                        int? defaultCategory = _categoryId;
-                        if (_type == 'expense' && selected?.account.type == 'stored') {
-                          final configured = selected?.card?.defaultCategoryId;
-                          if (configured != null && categories.any((c) => c.id == configured)) {
-                            defaultCategory = configured;
-                          }
-                        }
-                        setState(() {
-                          _accountId = value;
-                          _categoryId = defaultCategory;
-                        });
-                      },
-                    ),
-                    if (account != null) ...[
-                      SizedBox(height: tokens.space1),
-                      Text(_accountHint(account), style: TextStyle(fontSize: 12, color: tokens.textSecondary)),
+                        ),
+                      ] else if (topCategory != null) ...[
+                        SizedBox(height: 4),
+                        Text('该分类无需细分，已默认选中', style: TextStyle(fontSize: 10, color: tokens.textSecondary)),
+                      ],
                     ],
-                    _label(context, '日期'),
-                    TextFormField(
-                      controller: _date,
-                      keyboardType: TextInputType.datetime,
-                      decoration: _decoration(context, 'YYYY-MM-DD'),
-                      validator: (value) => DateTime.tryParse((value ?? '').trim()) == null ? '请选择日期' : null,
+                    SizedBox(height: tokens.space2),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: DropdownButtonFormField<int>(
+                            key: ValueKey('account-$accountId'),
+                            initialValue: accountId,
+                            isExpanded: true,
+                            decoration: _compactDecoration(context),
+                            icon: Icon(LucideIcons.chevronDown, color: tokens.textDisabled),
+                            items: accounts
+                                .map((a) => DropdownMenuItem(
+                                      value: a.account.id,
+                                      child: Text(
+                                        a.account.id == preferredDefault ? '${a.account.name}（默认）' : a.account.name,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ))
+                                .toList(),
+                            onChanged: (value) {
+                              if (value == null) return;
+                              final selected = _accountBy(accounts, value);
+                              int? defaultCategory = _categoryId;
+                              if (_type == 'expense' && selected?.account.type == 'stored') {
+                                final configured = selected?.card?.defaultCategoryId;
+                                if (configured != null && categories.any((c) => c.id == configured)) {
+                                  defaultCategory = configured;
+                                }
+                              }
+                              setState(() {
+                                _accountId = value;
+                                _categoryId = defaultCategory;
+                              });
+                            },
+                          ),
+                        ),
+                        SizedBox(width: tokens.space2),
+                        SizedBox(
+                          width: 116,
+                          child: TextFormField(
+                            controller: _date,
+                            keyboardType: TextInputType.datetime,
+                            style: TextStyle(fontSize: 13, color: tokens.textPrimary),
+                            decoration: _compactDecoration(context).copyWith(hintText: 'YYYY-MM-DD'),
+                            validator: (value) => DateTime.tryParse((value ?? '').trim()) == null ? '日期错误' : null,
+                          ),
+                        ),
+                      ],
                     ),
-                    _label(context, '备注'),
-                    TextFormField(
-                      controller: _note,
-                      decoration: _decoration(context, '添加备注（选填）'),
+                    if (account != null && _accountHint(account).isNotEmpty) ...[
+                      SizedBox(height: 2),
+                      Text(
+                        _accountHint(account),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 10, color: tokens.textSecondary),
+                      ),
+                    ],
+                    SizedBox(height: tokens.space2),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            controller: _note,
+                            style: TextStyle(fontSize: 13, color: tokens.textPrimary),
+                            decoration: _compactDecoration(context).copyWith(hintText: '点击填写备注'),
+                          ),
+                        ),
+                        SizedBox(width: tokens.space2),
+                        _imageControl(context),
+                      ],
                     ),
-                    SizedBox(height: tokens.space3),
-                    _imagePicker(context),
                     if (_editing) ...[
-                      SizedBox(height: tokens.space5),
+                      SizedBox(height: tokens.space1),
                       Align(
-                        alignment: Alignment.center,
+                        alignment: Alignment.centerLeft,
                         child: TextButton(
                           onPressed: _delete,
-                          child: Text('删除这笔流水', style: TextStyle(color: tokens.expense)),
+                          style: TextButton.styleFrom(
+                            padding: EdgeInsets.zero,
+                            minimumSize: const Size(0, 30),
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          child: Text('删除这笔流水', style: TextStyle(fontSize: 12, color: tokens.expense)),
                         ),
                       ),
                     ],
@@ -330,47 +438,46 @@ class _RecordSheetState extends ConsumerState<RecordSheet> {
     );
   }
 
-  Widget _imagePicker(BuildContext context) {
+  Widget _imageControl(BuildContext context) {
     final tokens = context.tokens;
     final file = _imagePath == null ? null : File(_imagePath!);
-    if (file != null && file.existsSync()) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+    final hasImage = file != null && file.existsSync();
+    return SizedBox(
+      width: 44,
+      height: 44,
+      child: Stack(
         children: [
-          Row(
-            children: [
-              Text('图片凭证', style: TextStyle(fontSize: 13, color: tokens.textSecondary)),
-              const Spacer(),
-              TextButton(
-                onPressed: () => setState(() => _imagePath = null),
-                child: const Text('移除'),
+          Positioned.fill(
+            child: InkWell(
+              onTap: _pickImage,
+              borderRadius: BorderRadius.circular(tokens.radiusMd),
+              child: Container(
+                decoration: BoxDecoration(
+                  border: Border.all(color: tokens.border),
+                  borderRadius: BorderRadius.circular(tokens.radiusMd),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: hasImage
+                    ? Image.file(file, fit: BoxFit.cover)
+                    : Icon(LucideIcons.camera, size: 20, color: tokens.textSecondary),
               ),
-            ],
+            ),
           ),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(tokens.radiusMd),
-            child: Image.file(file, height: 150, width: double.infinity, fit: BoxFit.cover),
-          ),
+          if (hasImage)
+            Positioned(
+              right: 0,
+              top: 0,
+              child: GestureDetector(
+                onTap: () => setState(() => _imagePath = null),
+                child: Container(
+                  width: 16,
+                  height: 16,
+                  decoration: BoxDecoration(color: tokens.textPrimary, shape: BoxShape.circle),
+                  child: const Icon(LucideIcons.x, size: 10, color: Colors.white),
+                ),
+              ),
+            ),
         ],
-      );
-    }
-    return InkWell(
-      onTap: _pickImage,
-      borderRadius: BorderRadius.circular(tokens.radiusMd),
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: tokens.space3, vertical: tokens.space4),
-        decoration: BoxDecoration(
-          color: tokens.bg,
-          border: Border.all(color: tokens.border),
-          borderRadius: BorderRadius.circular(tokens.radiusMd),
-        ),
-        child: Row(
-          children: [
-            Icon(LucideIcons.image, size: 22, color: tokens.textSecondary),
-            SizedBox(width: tokens.space2),
-            Text('添加图片凭证', style: TextStyle(fontSize: 13, color: tokens.textSecondary)),
-          ],
-        ),
       ),
     );
   }
@@ -431,7 +538,7 @@ class _RecordSheetState extends ConsumerState<RecordSheet> {
             _accountId = null;
           }),
           child: Container(
-            height: 38,
+            height: 32,
             alignment: Alignment.center,
             decoration: BoxDecoration(
               color: active ? tokens.bg : Colors.transparent,
@@ -441,7 +548,7 @@ class _RecordSheetState extends ConsumerState<RecordSheet> {
             child: Text(
               label,
               style: TextStyle(
-                fontSize: 14,
+                fontSize: 13,
                 fontWeight: active ? FontWeight.w600 : FontWeight.w500,
                 color: active ? tokens.primary : tokens.textSecondary,
               ),
@@ -464,23 +571,15 @@ class _RecordSheetState extends ConsumerState<RecordSheet> {
     if (_type == 'expense' && type == 'stored') return '储值卡消费只扣余额，不再计支出（充值已计）';
     if (_type == 'expense' && type == 'credit') return '信用卡消费计入支出；还款不再计支出';
     if (_type == 'income' && type == 'deposit') return '存单利息计入收入；本金不计收入';
-    return _type == 'expense' ? '记录一笔实际支出' : '记录一笔实际收入';
+    return '';
   }
 
-  Widget _label(BuildContext context, String text) {
-    final tokens = context.tokens;
-    return Padding(
-      padding: EdgeInsets.only(top: tokens.space3, bottom: tokens.space1),
-      child: Text(text, style: TextStyle(fontSize: 13, color: tokens.textSecondary)),
-    );
-  }
-
-  InputDecoration _decoration(BuildContext context, String hint) {
+  InputDecoration _compactDecoration(BuildContext context) {
     final tokens = context.tokens;
     return InputDecoration(
-      hintText: hint,
-      hintStyle: TextStyle(fontSize: 14, color: tokens.textDisabled),
-      contentPadding: EdgeInsets.symmetric(horizontal: tokens.space3, vertical: 12),
+      hintStyle: TextStyle(fontSize: 12, color: tokens.textDisabled),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      isDense: true,
       filled: true,
       fillColor: tokens.bg,
       border: OutlineInputBorder(

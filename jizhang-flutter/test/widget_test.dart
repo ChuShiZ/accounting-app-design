@@ -7,6 +7,7 @@ import 'package:jizhang/主入口.dart';
 import 'package:jizhang/数据/数据库.dart';
 import 'package:jizhang/数据/种子数据.dart';
 import 'package:jizhang/数据/仓库/账户仓库.dart';
+import 'package:jizhang/数据/仓库/类别仓库.dart';
 import 'package:jizhang/数据/仓库/交易仓库.dart';
 import 'package:jizhang/数据/仓库/设置仓库.dart';
 import 'package:jizhang/状态/提供者.dart';
@@ -78,7 +79,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('类别管理'), findsWidgets);
     expect(find.text('餐饮'), findsOneWidget);
-    expect(find.text('已用 0 笔'), findsWidgets);
+    expect(find.textContaining('已用 0 笔'), findsWidgets);
   });
 
   testWidgets('settings page renders WebDAV and backup', (tester) async {
@@ -186,7 +187,7 @@ void main() {
     final accounts = AccountRepository(db);
     final bank = await accounts.createBankAccount(name: '测试卡', openingBalance: 100000);
     final categories = await (db.select(db.categories)).get();
-    final food = categories.firstWhere((c) => c.name == '餐饮' && c.type == 'expense');
+    final food = categories.firstWhere((c) => c.name == '午餐' && c.type == 'expense');
     await TransactionRepository(db).addExpense(
       amount: 10000,
       accountId: bank,
@@ -210,5 +211,81 @@ void main() {
     expect(find.text('月支出对比'), findsOneWidget);
     expect(find.textContaining('AI'), findsNothing);
     expect(find.text('¥100.00'), findsWidgets);
+    expect(find.text('餐饮'), findsWidgets);
+  });
+
+  test('seed creates two-level preset categories', () async {
+    final db = AppDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    await seedPresetData(db);
+    final categories = await db.select(db.categories).get();
+    final food = categories.firstWhere((c) => c.name == '餐饮' && c.type == 'expense');
+    final lunch = categories.firstWhere((c) => c.name == '午餐' && c.type == 'expense');
+    final invest = categories.firstWhere((c) => c.name == '投资' && c.type == 'income');
+    final interest = categories.firstWhere((c) => c.name == '利息' && c.type == 'income');
+    final other = categories.firstWhere((c) => c.name == '其他' && c.type == 'expense');
+    expect(food.parentId, isNull);
+    expect(lunch.parentId, food.id);
+    expect(invest.parentId, isNull);
+    expect(interest.parentId, invest.id);
+    expect(other.parentId, isNull);
+    expect(other.isFixed, isTrue);
+    expect(categories.where((c) => c.type == 'expense').length, greaterThan(50));
+  });
+
+  testWidgets('record sheet saves a second-level category', (tester) async {
+    final db = AppDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    await seedPresetData(db);
+    final categories = await db.select(db.categories).get();
+    final lunch = categories.firstWhere((c) => c.name == '午餐' && c.type == 'expense');
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [databaseProvider.overrideWithValue(db)],
+        child: const JizhangApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('记一笔').last);
+    await tester.pumpAndSettle();
+    expect(find.text('餐饮'), findsWidgets);
+    expect(find.text('午餐'), findsOneWidget);
+    await tester.tap(find.text('午餐'));
+    await tester.enterText(find.byType(TextFormField).first, '23.45');
+    await tester.tap(find.text('保存'));
+    await tester.pumpAndSettle();
+
+    final transaction = (await db.select(db.transactions).get()).single;
+    expect(transaction.categoryId, lunch.id);
+    expect(find.text('餐饮 · 午餐'), findsOneWidget);
+  });
+
+  test('existing one-level categories migrate into the two-level tree', () async {
+    final db = AppDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    final repository = CategoryRepository(db);
+    await repository.create(name: '餐饮', type: 'expense', icon: 'food', isPreset: true);
+    await repository.create(name: '房贷', type: 'expense', icon: 'mortgage', isPreset: true);
+    await repository.create(name: '奖金', type: 'income', icon: 'gift', isPreset: true);
+    await repository.create(name: '利息', type: 'income', icon: 'interest', isPreset: true);
+    await repository.create(name: '其他', type: 'expense', icon: 'other', isPreset: true, isFixed: true);
+    await repository.create(name: '其他', type: 'income', icon: 'other', isPreset: true, isFixed: true);
+
+    await seedPresetData(db);
+    final categories = await db.select(db.categories).get();
+    final food = categories.firstWhere((c) => c.name == '餐饮' && c.type == 'expense');
+    final lunch = categories.firstWhere((c) => c.name == '午餐' && c.type == 'expense');
+    final finance = categories.firstWhere((c) => c.name == '金融' && c.type == 'expense');
+    final mortgage = categories.firstWhere((c) => c.name == '房贷' && c.type == 'expense');
+    final salary = categories.firstWhere((c) => c.name == '工资' && c.type == 'income');
+    final bonus = categories.firstWhere((c) => c.name == '奖金' && c.type == 'income');
+    final invest = categories.firstWhere((c) => c.name == '投资' && c.type == 'income');
+    final interest = categories.firstWhere((c) => c.name == '利息' && c.type == 'income');
+    expect(lunch.parentId, food.id);
+    expect(mortgage.parentId, finance.id);
+    expect(bonus.parentId, salary.id);
+    expect(interest.parentId, invest.id);
+    expect(categories.where((c) => c.name == '其他').length, 2);
   });
 }

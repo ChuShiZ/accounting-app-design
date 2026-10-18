@@ -17,6 +17,28 @@ class CategoryRepository {
     return (db.select(db.categories)..orderBy([(t) => OrderingTerm(expression: t.id)])).get();
   }
 
+  Future<CategoryRow?> findById(int id) {
+    return (db.select(db.categories)..where((t) => t.id.equals(id))).getSingleOrNull();
+  }
+
+  Future<List<CategoryRow>> listChildren(int parentId) {
+    return (db.select(db.categories)
+          ..where((t) => t.parentId.equals(parentId))
+          ..orderBy([(t) => OrderingTerm(expression: t.id)]))
+        .get();
+  }
+
+  Future<bool> hasChildren(int id) async {
+    final rows = await (db.select(db.categories)..where((t) => t.parentId.equals(id))).get();
+    return rows.isNotEmpty;
+  }
+
+  Future<void> setParent(int id, int? parentId) {
+    return (db.update(db.categories)..where((t) => t.id.equals(id))).write(
+      CategoriesCompanion(parentId: Value(parentId)),
+    );
+  }
+
   Future<CategoryRow?> findByName(String name, String type) {
     return (db.select(db.categories)
           ..where((t) => t.name.equals(name) & t.type.equals(type)))
@@ -25,6 +47,13 @@ class CategoryRepository {
 
   Future<int> usageCount(int id) async {
     final rows = await (db.select(db.transactions)..where((t) => t.categoryId.equals(id))).get();
+    return rows.length;
+  }
+
+  Future<int> usageCountWithChildren(int id) async {
+    final children = await listChildren(id);
+    final ids = <int>[id, ...children.map((c) => c.id)];
+    final rows = await (db.select(db.transactions)..where((t) => t.categoryId.isIn(ids))).get();
     return rows.length;
   }
 
@@ -40,21 +69,25 @@ class CategoryRepository {
     required String name,
     required String icon,
     required String type,
+    int? parentId,
   }) {
     return (db.update(db.categories)..where((t) => t.id.equals(id))).write(
       CategoriesCompanion(
         name: Value(name),
         icon: Value(icon),
         type: Value(type),
+        parentId: Value(parentId),
       ),
     );
   }
 
   /// 删除已使用类别时归入同类型的【其他】；默认类别同时清空。
+  /// 一级分类下还有子分类时不允许直接删除，避免误删整棵分类树。
   Future<void> deleteCategory(int id) async {
     final category = await (db.select(db.categories)..where((t) => t.id.equals(id))).getSingleOrNull();
     if (category == null) return;
     if (category.isFixed) throw StateError('固定类别不可删除');
+    if (await hasChildren(id)) throw StateError('请先删除或移动子分类');
     final fallback = await findByName('其他', category.type);
     await db.transaction(() async {
       if (fallback != null) {
