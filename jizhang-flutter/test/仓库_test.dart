@@ -1,4 +1,7 @@
+import 'dart:typed_data';
+
 import 'package:drift/native.dart';
+import 'package:excel/excel.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:jizhang/数据/数据库.dart';
@@ -379,6 +382,32 @@ void main() {
       accounts.deleteOrArchiveAccount(defaultView.account.id),
       throwsStateError,
     );
+  });
+
+  test('Excel 解析优先使用记账分类而不是分类筛选', () {
+    final excel = Excel.createExcel();
+    final sheet = excel['sheet1'];
+    sheet.appendRow([
+      TextCellValue('账单日期'),
+      TextCellValue('分类筛选'),
+      TextCellValue('记账分类'),
+      TextCellValue('收支类型'),
+      TextCellValue('备注'),
+      TextCellValue('金额'),
+    ]);
+    sheet.appendRow([
+      TextCellValue('2026-10-18 08:00:00'),
+      TextCellValue('餐饮'),
+      TextCellValue('早午晚餐'),
+      TextCellValue('支出'),
+      TextCellValue('家常菜'),
+      TextCellValue('16.00'),
+    ]);
+    final bytes = excel.encode();
+    final result = ExcelParser.parse(Uint8List.fromList(bytes!));
+    expect(result.rows.single.category, '早午晚餐');
+    expect(result.rows.single.type, 'expense');
+    expect(result.rows.single.amount, 1600);
   });
 
   test('Excel 分类映射到现有两级分类', () {
