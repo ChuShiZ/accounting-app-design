@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 
 import '../组件/页面骨架.dart';
 import '../主题/令牌.dart';
@@ -42,13 +43,13 @@ class HomePage extends StatelessWidget {
           const PlaceholderCard(
             title: '工程骨架已就绪',
             description: '批次 0：主题令牌、4 Tab、drift schema、Repository 与测试。批次 1 开始接入资产与账户。',
-            icon: Icons.layers_outlined,
+            icon: LucideIcons.layers,
           ),
           SizedBox(height: tokens.space3),
           const PlaceholderCard(
             title: '下一步：资产与账户',
             description: '银行卡、储值卡、贷款的新增/编辑，随后接入首页流水与记一笔。',
-            icon: Icons.account_balance_wallet_outlined,
+            icon: LucideIcons.wallet,
           ),
         ],
       ),

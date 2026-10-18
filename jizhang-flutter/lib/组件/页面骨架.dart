@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 
 import '../主题/令牌.dart';
 
@@ -72,7 +73,7 @@ class PlaceholderCard extends StatelessWidget {
     super.key,
     required this.title,
     required this.description,
-    this.icon = Icons.construction_outlined,
+    this.icon = LucideIcons.construction,
   });
 
   final String title;

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 
 import '../组件/页面骨架.dart';
 import '../主题/令牌.dart';
@@ -19,9 +20,9 @@ class ProfilePage extends StatelessWidget {
         ),
         child: Column(
           children: [
-            _row(context, Icons.settings_outlined, '设置', '默认账户 · WebDAV'),
+            _row(context, LucideIcons.settings, '设置', '默认账户 · WebDAV'),
             Divider(height: 1, color: tokens.divider),
-            _row(context, Icons.category_outlined, '类别管理', ''),
+            _row(context, LucideIcons.tags, '类别管理', ''),
           ],
         ),
       ),
@@ -34,7 +35,7 @@ class ProfilePage extends StatelessWidget {
       leading: Icon(icon, color: tokens.primary, size: 24),
       title: Text(title, style: TextStyle(fontSize: 15, color: tokens.textPrimary)),
       subtitle: subtitle.isEmpty ? null : Text(subtitle, style: TextStyle(fontSize: 13, color: tokens.textSecondary)),
-      trailing: Icon(Icons.chevron_right, color: tokens.textDisabled, size: 20),
+      trailing: Icon(LucideIcons.chevronRight, color: tokens.textDisabled, size: 20),
       onTap: () {
         ScaffoldMessenger.of(context)
           ..hideCurrentSnackBar()

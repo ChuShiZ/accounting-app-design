@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 
 import '../主题/令牌.dart';
 
@@ -88,11 +89,11 @@ class _BottomBar extends StatelessWidget {
           height: 62,
           child: Row(
             children: [
-              _tab(context, 0, Icons.home_outlined, Icons.home, '首页'),
-              _tab(context, 1, Icons.bar_chart_outlined, Icons.bar_chart, '报表'),
+              _tab(context, 0, LucideIcons.home, '首页'),
+              _tab(context, 1, LucideIcons.barChart3, '报表'),
               Expanded(child: _addButton(context)),
-              _tab(context, 2, Icons.account_balance_wallet_outlined, Icons.account_balance_wallet, '资产'),
-              _tab(context, 3, Icons.person_outline, Icons.person, '我的'),
+              _tab(context, 2, LucideIcons.wallet, '资产'),
+              _tab(context, 3, LucideIcons.user, '我的'),
             ],
           ),
         ),
@@ -100,7 +101,7 @@ class _BottomBar extends StatelessWidget {
     );
   }
 
-  Widget _tab(BuildContext context, int index, IconData icon, IconData activeIcon, String label) {
+  Widget _tab(BuildContext context, int index, IconData icon, String label) {
     final tokens = context.tokens;
     final active = currentIndex == index;
     return Expanded(
@@ -110,7 +111,7 @@ class _BottomBar extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              active ? activeIcon : icon,
+              icon,
               size: 22,
               color: active ? tokens.primary : tokens.textSecondary,
             ),
@@ -143,7 +144,7 @@ class _BottomBar extends StatelessWidget {
               color: tokens.primary,
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.add, color: Colors.white, size: 24),
+            child: const Icon(LucideIcons.plus, color: Colors.white, size: 24),
           ),
           const SizedBox(height: 1),
           Text(

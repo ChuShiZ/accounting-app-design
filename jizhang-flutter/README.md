@@ -15,6 +15,7 @@
 ## 已实现（批次 0）
 
 - 主题令牌：`lib/主题/令牌.dart`、`lib/主题/主题.dart`
+- 线性图标：`lucide_icons`（与 DESIGN.md 的 Lucide 线性风格一致；MaterialIcons 的 CFF3 字体在 MuMu Android 12 上显示为 tofu，已替换）
 - 4 Tab 壳 + 中央「记一笔」：`lib/路由/路由.dart`、`lib/组件/主壳.dart`
 - 8 张 drift 表：account / transaction / category / card_detail / deposit_detail / loan_detail / recurring_rule / settings
 - 数据库：`lib/数据/数据库.dart`（schemaVersion=1）
@@ -30,9 +31,13 @@ dart run build_runner build --delete-conflicting-outputs
 flutter analyze
 flutter test
 flutter build apk --debug
+# MuMu 模拟器（x86_64）：
+flutter build apk --debug --target-platform android-x64
 ```
 
 Debug APK：`build/app/outputs/flutter-apk/app-debug.apk`
+
+已在 MuMu Player 12（Android 12 / API 32 / x86_64）安装并启动验证：4 Tab、页面切换、中央记一笔 Sheet、Lucide 图标显示正常。
 
 ## 下一步
 
@@ -41,5 +46,6 @@ Debug APK：`build/app/outputs/flutter-apk/app-debug.apk`
 
 ## 已知
 
-- 当前只创建 Android 平台；本机未连接 Android 真机/模拟器，APK 已构建但未安装验证。
+- 当前只创建 Android 平台；已在 MuMu 模拟器验证，未在真机验证。
 - `sqlite3_flutter_libs` 使用兼容 Flutter 3.38 的 0.5.x；drift 2.28（Dart 3.10 约束）。
+- MuMu 使用 x86_64 包；真机请用默认 `flutter build apk --debug` 的 arm64 包。
