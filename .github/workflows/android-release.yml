@@ -4,7 +4,6 @@ on:
   push:
     tags:
       - 'v*'
-  workflow_dispatch:
 
 permissions:
   contents: write
@@ -34,7 +33,7 @@ jobs:
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/release.jks"
-          cat > android/keystore.properties <<EOF
+          cat > jizhang-flutter/android/keystore.properties <<EOF
           storeFile=$RUNNER_TEMP/release.jks
           storePassword=$STORE_PASSWORD
           keyAlias=$KEY_ALIAS
@@ -42,11 +41,13 @@ jobs:
           EOF
 
       - name: Build release APK
+        working-directory: jizhang-flutter
         run: |
           flutter pub get
           flutter build apk --release
 
       - name: Prepare update manifest
+        working-directory: jizhang-flutter
         run: |
           VERSION_LINE=$(grep '^version:' pubspec.yaml | head -n 1 | sed 's/version: *//')
           VERSION_NAME=${VERSION_LINE%%+*}
@@ -76,6 +77,6 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            dist/*.apk
-            dist/latest.json
+            jizhang-flutter/dist/*.apk
+            jizhang-flutter/dist/latest.json
           generate_release_notes: true
