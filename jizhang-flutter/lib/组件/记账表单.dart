@@ -235,7 +235,13 @@ class _RecordSheetState extends ConsumerState<RecordSheet> {
                       decoration: _decoration(context, ''),
                       icon: Icon(LucideIcons.chevronDown, color: tokens.textDisabled),
                       items: accounts
-                          .map((a) => DropdownMenuItem(value: a.account.id, child: Text(a.account.name)))
+                          .map((a) => DropdownMenuItem(
+                                value: a.account.id,
+                                child: Text(
+                                  a.account.id == defaultAccount ? '${a.account.name}（默认）' : a.account.name,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ))
                           .toList(),
                       onChanged: (value) {
                         if (value == null) return;

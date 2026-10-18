@@ -67,13 +67,21 @@ class _ExcelImportPageState extends ConsumerState<ExcelImportPage> {
                     decoration: _decoration(context, accounts.isEmpty ? '请先添加账户' : ''),
                     icon: Icon(LucideIcons.chevronDown, color: tokens.textDisabled),
                     items: accounts
-                        .map((a) => DropdownMenuItem(value: a.account.id, child: Text(a.account.name, overflow: TextOverflow.ellipsis)))
+                        .map((a) => DropdownMenuItem(
+                              value: a.account.id,
+                              child: Text(
+                                a.account.id == preferred ? '${a.account.name}（默认）' : a.account.name,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ))
                         .toList(),
                     onChanged: (value) => setState(() => _accountId = value),
                   ),
                   SizedBox(height: tokens.space1),
                   Text(
-                    'Excel 没有账户列时，全部导入到该账户',
+                    preferred != null
+                        ? '默认账户可在「设置 → 默认记账账户」修改'
+                        : '未设置默认账户，当前使用第一个账户；可在设置中指定',
                     style: TextStyle(fontSize: 11, color: tokens.textSecondary),
                   ),
                   SizedBox(height: tokens.space3),
