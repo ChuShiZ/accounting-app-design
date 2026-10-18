@@ -44,12 +44,8 @@ class ProfilePage extends StatelessWidget {
                   context,
                   LucideIcons.upload,
                   'Excel 导入',
-                  '后续批次接入',
-                  onTap: () {
-                    ScaffoldMessenger.of(context)
-                      ..hideCurrentSnackBar()
-                      ..showSnackBar(const SnackBar(content: Text('Excel 导入在后续批次实现')));
-                  },
+                  '支持 .xlsx 收入/支出导入',
+                  onTap: () => context.push('/import'),
                 ),
               ],
             ),

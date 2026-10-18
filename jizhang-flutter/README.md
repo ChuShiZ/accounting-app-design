@@ -1,7 +1,7 @@
 # jizhang · 记账（Flutter）
 
 > 自用离线安卓记账 App。主设计：`../doc/设计-账户资产模型.md`；视觉基准：`../DESIGN.md`。
-> 当前进度：**首页 / 记一笔 / 报表 / 资产 / 存单 / 信用卡 / 贷款 / 类别 / 设置 / WebDAV 备份主体完成**；Excel 导入仍为原型入口。
+> 当前进度：**首页 / 记一笔 / 报表 / 资产 / 存单 / 信用卡 / 贷款 / 类别 / 设置 / WebDAV 备份 / Excel 导入主体完成**。
 
 ## 环境
 
@@ -9,7 +9,7 @@
 - Android SDK 36.1.0；minSdk 26；targetSdk 36
 - applicationId：`com.self.jizhang`
 - 显示名：记账
-- 依赖：drift、riverpod、go_router、lucide_icons、image_picker、archive、flutter_secure_storage
+- 依赖：drift、riverpod、go_router、lucide_icons、image_picker、archive、flutter_secure_storage、excel、file_picker
 
 > 工程顶层目录使用 ASCII `jizhang-flutter/`。Windows 下 Gradle/Flutter shader 编译器无法在包含非 ASCII 的工程路径构建；`lib/` 内部文件名仍按中文约定。
 
@@ -69,12 +69,22 @@
 - 凭据：应用密码保存到系统安全存储；恢复先下载校验，重启 App 时替换数据库，并保留恢复前备份
 - 已用坚果云账号实测连接、建目录、上传、列表、下载、删除、恢复落盘
 
+### Excel 导入
+
+- 入口：我的 → Excel 导入；支持 `.xlsx`
+- 识别表头：日期/账单日期、收支类型、金额、类别/记账分类、备注、账户（可选）
+- 无账户列时导入到设置页选择的账户；类别按名称+类型自动复用/创建
+- 重复判断：日期时间、金额、类型、类别、备注、账户一致视为重复
+- 结果报告：成功/重复/跳过，失败行号
+- 已用 3800 行账单实测：成功 3800、跳过 0、重复 0、新建类别 19；首页本月支出/收入与源文件汇总一致
+
 ### 测试
 
 - `flutter analyze` 0 issue
 - `flutter test` 24/24（17 个仓库/业务测试 + 7 个 Widget 测试）
 - 已用 x86_64 debug APK 在 MuMu Player 12（Android 12 / API 32）安装启动，手工验证：添加银行卡/储值卡/信用卡/存单、记账、流水编辑、充值、储值卡消费、信用卡还款、存单支取、报表、类别管理、设置页、图片选择入口
 - 坚果云实测：连接、`/记账备份/` 建目录、上传、列表、下载、删除、重启恢复；默认备份不含图片，开启后包含 `receipts/`
+- Excel 实测：3800 行账单成功导入，分类自动创建，重复导入可跳过
 - 尚未在 arm64 真机安装验证
 
 ## 命令
@@ -93,7 +103,7 @@ Debug APK：`build/app/outputs/flutter-apk/app-debug.apk`
 
 ## 已知 / 未接入
 
-- WebDAV 已接真实坚果云备份；Excel 导入入口仍为原型提示，未接入 `.xlsx` 解析与账户映射。
+- WebDAV 已接真实坚果云备份；Excel `.xlsx` 导入已接入
 - 周期账单规则表已建，但尚无规则 UI。
 - 当前只创建 Android 平台；已在 MuMu 模拟器验证，未在真机验证。
 - `sqlite3_flutter_libs` 使用兼容 Flutter 3.38 的 0.5.x；drift 2.28（Dart 3.10 约束）。

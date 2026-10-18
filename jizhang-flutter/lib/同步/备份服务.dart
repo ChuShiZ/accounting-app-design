@@ -97,7 +97,7 @@ class BackupService {
     });
     final manifestBytes = utf8.encode(manifest);
     archive.addFile(ArchiveFile('manifest.json', manifestBytes.length, manifestBytes));
-    final zipBytes = ZipEncoder().encode(archive, level: 6);
+    final zipBytes = ZipEncoder().encode(archive, level: 6)!;
 
     final client = _client;
     await client.upload(config.folderSegments, name, zipBytes);
