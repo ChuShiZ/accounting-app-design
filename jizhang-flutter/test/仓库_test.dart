@@ -358,4 +358,23 @@ void main() {
     expect(WebDavConfig(baseUrl: 'https://example.com/dav/', username: 'u', password: 'p', folder: '/').folder, '记账备份');
     expect(WebDavConfig(baseUrl: 'https://example.com/dav/', username: 'u', password: 'p', folder: 'foo/bar').folderSegments, ['foo', 'bar']);
   });
+
+  test('默认账户：自动创建、无余额、不可删除', () async {
+    final list = await accounts.listWithBalances();
+    final defaultView = list.firstWhere((view) => view.account.type == 'default');
+    expect(defaultView.account.name, '默认账户');
+    expect(defaultView.balance, 0);
+    final food = (await categories.findByName('餐饮', 'expense'))!.id;
+    await transactions.addExpense(
+      amount: 1000,
+      accountId: defaultView.account.id,
+      categoryId: food,
+      occurredAt: DateTime(2026, 6, 22),
+    );
+    expect(await accounts.balanceOf(defaultView.account.id), 0);
+    await expectLater(
+      accounts.deleteOrArchiveAccount(defaultView.account.id),
+      throwsStateError,
+    );
+  });
 }

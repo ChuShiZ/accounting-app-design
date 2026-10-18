@@ -8,6 +8,7 @@ import 'package:jizhang/数据/数据库.dart';
 import 'package:jizhang/数据/种子数据.dart';
 import 'package:jizhang/数据/仓库/账户仓库.dart';
 import 'package:jizhang/数据/仓库/交易仓库.dart';
+import 'package:jizhang/数据/仓库/设置仓库.dart';
 import 'package:jizhang/状态/提供者.dart';
 
 void main() {
@@ -31,7 +32,7 @@ void main() {
     expect(find.text('我的'), findsWidgets);
   });
 
-  testWidgets('assets empty state and add sheet', (tester) async {
+  testWidgets('assets default account and add sheet', (tester) async {
     final db = AppDatabase(NativeDatabase.memory());
     addTearDown(db.close);
     await seedPresetData(db);
@@ -45,9 +46,9 @@ void main() {
 
     await tester.tap(find.text('资产').last);
     await tester.pumpAndSettle();
-    expect(find.text('还没有账户'), findsOneWidget);
+    expect(find.text('默认账户'), findsWidgets);
 
-    await tester.tap(find.text('添加账户').last);
+    await tester.tap(find.byTooltip('添加账户'));
     await tester.pumpAndSettle();
     expect(find.text('银行卡'), findsOneWidget);
     expect(find.text('储值卡'), findsOneWidget);
@@ -125,6 +126,7 @@ void main() {
     addTearDown(db.close);
     await seedPresetData(db);
     final bank = await AccountRepository(db).createBankAccount(name: '测试卡', openingBalance: 100000);
+    await SettingsRepository(db).set('default_account_id', bank.toString());
     await tester.pumpWidget(
       ProviderScope(
         overrides: [databaseProvider.overrideWithValue(db)],

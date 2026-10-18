@@ -159,6 +159,7 @@ class _AccountGroups extends StatelessWidget {
     final tokens = context.tokens;
     final deposits = accounts.where((a) => a.account.type == 'deposit').toList();
     final groups = <String, List<AccountWithBalance>>{
+      '默认账户': accounts.where((a) => a.account.type == 'default').toList(),
       '账户': accounts.where((a) => ['bank', 'ewallet', 'cash'].contains(a.account.type)).toList(),
       '储值卡': accounts.where((a) => a.account.type == 'stored').toList(),
       '存单': deposits,
@@ -350,6 +351,7 @@ class _AccountTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     final isLiability = view.account.type == 'credit' || view.account.type == 'loan';
+    final isDefault = view.account.type == 'default';
     return InkWell(
       onTap: onTap,
       child: Padding(
@@ -380,16 +382,18 @@ class _AccountTile extends StatelessWidget {
                 ],
               ),
             ),
-            SizedBox(width: tokens.space2),
-            Text(
-              formatCents(isLiability ? view.balance.abs() : view.balance),
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: isLiability ? tokens.liability : tokens.textPrimary,
-                fontFeatures: const [FontFeature.tabularFigures()],
+            if (!isDefault) ...[
+              SizedBox(width: tokens.space2),
+              Text(
+                formatCents(isLiability ? view.balance.abs() : view.balance),
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: isLiability ? tokens.liability : tokens.textPrimary,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
               ),
-            ),
+            ],
             SizedBox(width: tokens.space1),
             Icon(LucideIcons.chevronRight, size: 18, color: tokens.textDisabled),
           ],

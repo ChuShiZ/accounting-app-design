@@ -42,12 +42,15 @@ class AccountRepository {
     final loanMap = {for (final l in loans) l.accountId: l};
     final depositMap = {for (final d in deposits) d.accountId: d};
     return accounts.map((account) {
-      var balance = account.openingBalance;
-      for (final t in rows) {
-        if (t.type == 'income' && t.accountId == account.id) balance += t.amount;
-        if (t.type == 'expense' && t.accountId == account.id) balance -= t.amount;
-        if (t.type == 'transfer' && t.accountId == account.id) balance -= t.amount;
-        if (t.type == 'transfer' && t.toAccountId == account.id) balance += t.amount;
+      var balance = 0;
+      if (account.type != 'default') {
+        balance = account.openingBalance;
+        for (final t in rows) {
+          if (t.type == 'income' && t.accountId == account.id) balance += t.amount;
+          if (t.type == 'expense' && t.accountId == account.id) balance -= t.amount;
+          if (t.type == 'transfer' && t.accountId == account.id) balance -= t.amount;
+          if (t.type == 'transfer' && t.toAccountId == account.id) balance += t.amount;
+        }
       }
       return AccountWithBalance(
         account: account,
@@ -83,7 +86,33 @@ class AccountRepository {
     );
   }
 
+  Future<bool> isSystemAccount(int id) async {
+    final account = await findById(id);
+    return account?.type == 'default';
+  }
+
+  Future<int> ensureDefaultAccount() async {
+    final existing = await (db.select(db.accounts)
+          ..where((t) => t.type.equals('default'))
+          ..limit(1))
+        .getSingleOrNull();
+    if (existing != null) return existing.id;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    return db.into(db.accounts).insert(AccountsCompanion.insert(
+          type: 'default',
+          name: '默认账户',
+          icon: 'wallet',
+          openingBalance: const Value(0),
+          note: const Value('系统默认账户，用于未指定账户的流水；不参与余额统计'),
+          createdAt: Value(now),
+        ));
+  }
+
   Future<bool> deleteOrArchiveAccount(int id) async {
+    final account = await findById(id);
+    if (account?.type == 'default') {
+      throw StateError('默认账户不可删除');
+    }
     final has = await hasTransactions(id);
     if (has) {
       await archiveAccount(id);
@@ -321,7 +350,7 @@ class AccountRepository {
 
   Future<int> balanceOf(int accountId) async {
     final account = await findById(accountId);
-    if (account == null) return 0;
+    if (account == null || account.type == 'default') return 0;
     final rows = await db.select(db.transactions).get();
     var balance = account.openingBalance;
     for (final t in rows) {

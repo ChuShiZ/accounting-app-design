@@ -87,9 +87,9 @@ class _RecordSheetState extends ConsumerState<RecordSheet> {
 
   List<AccountWithBalance> _accountsFor(List<AccountWithBalance> all) {
     if (_type == 'income') {
-      return all.where((a) => ['bank', 'ewallet', 'cash', 'stored', 'deposit'].contains(a.account.type)).toList();
+      return all.where((a) => ['bank', 'ewallet', 'cash', 'stored', 'deposit', 'default'].contains(a.account.type)).toList();
     }
-    return all.where((a) => ['bank', 'ewallet', 'cash', 'stored', 'credit'].contains(a.account.type)).toList();
+    return all.where((a) => ['bank', 'ewallet', 'cash', 'stored', 'credit', 'default'].contains(a.account.type)).toList();
   }
 
   int? _effectiveAccount(List<AccountWithBalance> accounts, int? preferred) {
@@ -109,7 +109,11 @@ class _RecordSheetState extends ConsumerState<RecordSheet> {
     final allCategories = categoriesAsync.valueOrNull ?? const <CategoryRow>[];
     final accounts = _accountsFor(allAccounts);
     final categories = allCategories.where((c) => c.type == _type).toList();
-    final accountId = _effectiveAccount(accounts, defaultAccount);
+    final specialDefault = allAccounts.where((a) => a.account.type == 'default').firstOrNull?.account.id;
+    final preferredDefault = defaultAccount != null && allAccounts.any((a) => a.account.id == defaultAccount)
+        ? defaultAccount
+        : specialDefault;
+    final accountId = _effectiveAccount(accounts, preferredDefault);
     final account = _accountBy(accounts, accountId);
     final preferredCategory = _categoryId ??
         (account?.account.type == 'stored' && _type == 'expense' ? account?.card?.defaultCategoryId : null);
@@ -238,7 +242,7 @@ class _RecordSheetState extends ConsumerState<RecordSheet> {
                           .map((a) => DropdownMenuItem(
                                 value: a.account.id,
                                 child: Text(
-                                  a.account.id == defaultAccount ? '${a.account.name}（默认）' : a.account.name,
+                                  a.account.id == preferredDefault ? '${a.account.name}（默认）' : a.account.name,
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ))
@@ -456,6 +460,7 @@ class _RecordSheetState extends ConsumerState<RecordSheet> {
 
   String _accountHint(AccountWithBalance view) {
     final type = view.account.type;
+    if (type == 'default') return '默认账户不参与余额统计，用于未指定账户的流水';
     if (_type == 'expense' && type == 'stored') return '储值卡消费只扣余额，不再计支出（充值已计）';
     if (_type == 'expense' && type == 'credit') return '信用卡消费计入支出；还款不再计支出';
     if (_type == 'income' && type == 'deposit') return '存单利息计入收入；本金不计收入';

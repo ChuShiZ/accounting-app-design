@@ -34,11 +34,13 @@ class _ExcelImportPageState extends ConsumerState<ExcelImportPage> {
     final accountsAsync = ref.watch(accountsProvider);
     final accounts = accountsAsync.valueOrNull ?? const <AccountWithBalance>[];
     final preferred = ref.watch(defaultAccountProvider).valueOrNull;
+    final specialDefault = accounts.where((a) => a.account.type == 'default').firstOrNull?.account.id;
+    final fallbackDefault = preferred != null && accounts.any((a) => a.account.id == preferred)
+        ? preferred
+        : specialDefault;
     final selected = (_accountId != null && accounts.any((a) => a.account.id == _accountId))
         ? _accountId
-        : (preferred != null && accounts.any((a) => a.account.id == preferred)
-            ? preferred
-            : (accounts.isNotEmpty ? accounts.first.account.id : null));
+        : (fallbackDefault ?? (accounts.isNotEmpty ? accounts.first.account.id : null));
     final parsed = _parsed;
     return Scaffold(
       backgroundColor: tokens.surface,
@@ -70,7 +72,7 @@ class _ExcelImportPageState extends ConsumerState<ExcelImportPage> {
                         .map((a) => DropdownMenuItem(
                               value: a.account.id,
                               child: Text(
-                                a.account.id == preferred ? '${a.account.name}（默认）' : a.account.name,
+                                a.account.id == fallbackDefault ? '${a.account.name}（默认）' : a.account.name,
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ))
@@ -79,7 +81,7 @@ class _ExcelImportPageState extends ConsumerState<ExcelImportPage> {
                   ),
                   SizedBox(height: tokens.space1),
                   Text(
-                    preferred != null
+                    fallbackDefault != null
                         ? '默认账户可在「设置 → 默认记账账户」修改'
                         : '未设置默认账户，当前使用第一个账户；可在设置中指定',
                     style: TextStyle(fontSize: 11, color: tokens.textSecondary),

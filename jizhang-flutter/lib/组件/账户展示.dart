@@ -64,6 +64,8 @@ String accountTypeLabel(String type) {
       return '信用卡';
     case 'deposit':
       return '存单';
+    case 'default':
+      return '默认账户';
     case 'loan':
       return '贷款';
     case 'cash':
@@ -148,6 +150,8 @@ String accountSubtitle(AccountWithBalance view, {Map<int, String> categoryNames 
       }
       final maturity = DateTime.fromMillisecondsSinceEpoch(deposit.maturityAt);
       return '${(deposit.rateBp / 100).toStringAsFixed(2)}% · ${deposit.termMonths}个月 · 到期 ${formatDate(maturity)}';
+    case 'default':
+      return '系统账户 · 不参与余额统计';
     case 'loan':
       final loan = view.loan;
       if (loan == null) return '贷款';

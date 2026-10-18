@@ -36,6 +36,7 @@ class _AccountDetailSheet extends ConsumerWidget {
     final tokens = context.tokens;
     final account = view.account;
     final isLiability = account.type == 'credit' || account.type == 'loan';
+    final isDefault = account.type == 'default';
     final loan = view.loan;
     final deposit = view.deposit;
     final closed = deposit?.closedAt != null;
@@ -78,31 +79,53 @@ class _AccountDetailSheet extends ConsumerWidget {
                 ],
               ),
               SizedBox(height: tokens.space4),
-              Container(
-                padding: EdgeInsets.all(tokens.space4),
-                decoration: BoxDecoration(color: tokens.bg, border: Border.all(color: tokens.border), borderRadius: BorderRadius.circular(tokens.radiusLg)),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      account.type == 'credit' || account.type == 'loan' ? '剩余本金 / 待还' : '当前余额',
-                      style: TextStyle(fontSize: 13, color: tokens.textSecondary),
-                    ),
-                    SizedBox(height: tokens.space1),
-                    Text(
-                      formatCents(isLiability ? view.balance.abs() : view.balance),
-                      style: TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.w700,
-                        color: isLiability ? tokens.liability : tokens.textPrimary,
-                        fontFeatures: const [FontFeature.tabularFigures()],
+              if (isDefault)
+                Container(
+                  padding: EdgeInsets.all(tokens.space4),
+                  decoration: BoxDecoration(color: tokens.surface2, border: Border.all(color: tokens.border), borderRadius: BorderRadius.circular(tokens.radiusLg)),
+                  child: Row(
+                    children: [
+                      Icon(LucideIcons.inbox, size: 24, color: tokens.textSecondary),
+                      SizedBox(width: tokens.space3),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('系统默认账户', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: tokens.textPrimary)),
+                            SizedBox(height: 2),
+                            Text('未指定账户的流水归入这里，不参与余额统计', style: TextStyle(fontSize: 12, color: tokens.textSecondary)),
+                          ],
+                        ),
                       ),
-                    ),
-                    SizedBox(height: tokens.space1),
-                    Text(accountSubtitle(view, categoryNames: categoryNames), style: TextStyle(fontSize: 13, color: tokens.textSecondary)),
-                  ],
+                    ],
+                  ),
+                )
+              else
+                Container(
+                  padding: EdgeInsets.all(tokens.space4),
+                  decoration: BoxDecoration(color: tokens.bg, border: Border.all(color: tokens.border), borderRadius: BorderRadius.circular(tokens.radiusLg)),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        account.type == 'credit' || account.type == 'loan' ? '剩余本金 / 待还' : '当前余额',
+                        style: TextStyle(fontSize: 13, color: tokens.textSecondary),
+                      ),
+                      SizedBox(height: tokens.space1),
+                      Text(
+                        formatCents(isLiability ? view.balance.abs() : view.balance),
+                        style: TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.w700,
+                          color: isLiability ? tokens.liability : tokens.textPrimary,
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                        ),
+                      ),
+                      SizedBox(height: tokens.space1),
+                      Text(accountSubtitle(view, categoryNames: categoryNames), style: TextStyle(fontSize: 13, color: tokens.textSecondary)),
+                    ],
+                  ),
                 ),
-              ),
               SizedBox(height: tokens.space4),
               if (deposit != null) ...[
                 _row(context, '存单状态', closed ? (deposit.closeType == 'renew' ? '已转存' : '已支取') : '存续中'),
@@ -217,31 +240,32 @@ class _AccountDetailSheet extends ConsumerWidget {
                 ),
                 SizedBox(height: tokens.space2),
               ],
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () => Navigator.of(context).pop(AccountDetailAction.edit),
-                      icon: const Icon(LucideIcons.pencil, size: 18),
-                      label: const Text('编辑'),
-                      style: OutlinedButton.styleFrom(
-                        minimumSize: const Size.fromHeight(48),
-                        side: BorderSide(color: tokens.border),
-                        foregroundColor: tokens.textPrimary,
+              if (!isDefault)
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () => Navigator.of(context).pop(AccountDetailAction.edit),
+                        icon: const Icon(LucideIcons.pencil, size: 18),
+                        label: const Text('编辑'),
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size.fromHeight(48),
+                          side: BorderSide(color: tokens.border),
+                          foregroundColor: tokens.textPrimary,
+                        ),
                       ),
                     ),
-                  ),
-                  SizedBox(width: tokens.space3),
-                  Expanded(
-                    child: TextButton.icon(
-                      onPressed: () => Navigator.of(context).pop(AccountDetailAction.delete),
-                      icon: const Icon(LucideIcons.trash2, size: 18),
-                      label: const Text('删除'),
-                      style: TextButton.styleFrom(minimumSize: const Size.fromHeight(48), foregroundColor: tokens.expense),
+                    SizedBox(width: tokens.space3),
+                    Expanded(
+                      child: TextButton.icon(
+                        onPressed: () => Navigator.of(context).pop(AccountDetailAction.delete),
+                        icon: const Icon(LucideIcons.trash2, size: 18),
+                        label: const Text('删除'),
+                        style: TextButton.styleFrom(minimumSize: const Size.fromHeight(48), foregroundColor: tokens.expense),
+                      ),
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
             ],
           ),
         ),

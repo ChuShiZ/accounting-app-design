@@ -1,5 +1,6 @@
 import '数据库.dart';
 import '仓库/类别仓库.dart';
+import '仓库/账户仓库.dart';
 
 class _PresetCategory {
   const _PresetCategory(this.name, this.type, this.icon, {this.fixed = false});
@@ -32,18 +33,20 @@ const _presets = <_PresetCategory>[
   _PresetCategory('其他', 'income', 'other', fixed: true),
 ];
 
-/// 首次打开数据库时写入预设类别；已有类别时不动。
+/// 首次打开数据库时写入预设类别；已有类别时不动。默认账户始终确保存在。
 Future<void> seedPresetData(AppDatabase db) async {
   final existing = await db.select(db.categories).get();
-  if (existing.isNotEmpty) return;
-  final categories = CategoryRepository(db);
-  for (final preset in _presets) {
-    await categories.create(
-      name: preset.name,
-      type: preset.type,
-      icon: preset.icon,
-      isPreset: true,
-      isFixed: preset.fixed,
-    );
+  if (existing.isEmpty) {
+    final categories = CategoryRepository(db);
+    for (final preset in _presets) {
+      await categories.create(
+        name: preset.name,
+        type: preset.type,
+        icon: preset.icon,
+        isPreset: true,
+        isFixed: preset.fixed,
+      );
+    }
   }
+  await AccountRepository(db).ensureDefaultAccount();
 }
