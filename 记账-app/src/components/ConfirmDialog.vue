@@ -1,11 +1,11 @@
 <template>
   <div v-if="confirmState.show" class="confirm-mask" @click="cancel">
     <div class="confirm-dialog" @click.stop>
-      <div class="confirm-title">确认删除</div>
+      <div class="confirm-title">{{confirmState.title}}</div>
       <div class="confirm-msg">{{confirmState.message}}</div>
       <div class="confirm-actions">
         <button class="btn btn-secondary" @click="cancel">取消</button>
-        <button class="btn btn-primary confirm-btn" @click="ok">删除</button>
+        <button class="btn" :class="confirmState.danger?'confirm-btn':'btn-primary'" @click="ok">{{confirmState.confirmText}}</button>
       </div>
     </div>
   </div>

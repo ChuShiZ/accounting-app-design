@@ -1,8 +1,8 @@
 # DESIGN.md — 移动端记账 App「现代简约·财务可信」设计系统
 
 > 基准系统：**Stripe（靛信任色 + 数据极简）** 为视觉与色彩基石，叠加 **Apple iOS HIG** 原生移动范式（Tab Bar / 底部 Sheet / 安全区 / 系统字体），以 **Coinbase（纯蓝信任）** 为可选备选色相。
-> 平台：原生 iOS/Android，375dp 设计稿基准（原型 375×667），覆盖至 430dp 竖屏，单手热区；仅浅色，不做深色模式。
-> 修订：2026-08-05 对齐原型 v14（概览卡对齐、环比箭头、卡片类型三选一、默认消费类别）
+> 平台：原生 iOS/Android，375dp 设计稿基准（原型 375×812，自适应窗口高度；v15 旧稿为 375×667），覆盖至 430dp 竖屏，单手热区；仅浅色，不做深色模式。
+> 修订：2026-10-18 版本基线 v16（账户/资产模型重构；视觉规则沿用 v14/v15：概览卡对齐、环比箭头、卡片类型三选一、默认消费类别）
 
 ---
 
@@ -68,18 +68,20 @@
 **字号阶（dp/px，移动基准）**
 | Token | 尺寸 | 字重 | 行高 | 用途 |
 |-------|------|------|------|------|
-| `--text-amount-xl` | 34px | 700 | 1.10 | 概览本月收入（大主数，左对齐）|
-| `--text-amount-lg` | 22px | 600 | 1.20 | 流水每条金额（右对齐 tnum）、概览今日/本月支出、报表汇总金额 |
-| `--text-amount-md` | 17px | 600 | 1.30 | 卡片余额、表单输入金额 |
+| `--text-amount-xl` | 32px | 700 | 1.10 | 报表大数 / 卡片余额 |
+| `--text-amount-lg` | 20px | 600 | 1.20 | 报表汇总金额、次级金额 |
+| `--text-amount-md` | 17px | 600 | 1.30 | 流水每条金额、排行金额 |
 | `--text-h1` | 20px | 600 | 1.30 | 页面标题、Sheet 标题 |
-| `--text-h2` | 17px | 600 | 1.35 | 分组标题（今天/昨天/更早）、卡片标题 |
-| `--text-body-lg` | 16px | 500 | 1.50 | 按钮文字、重要正文 |
-| `--text-body` | 15px | 400 | 1.50 | 类别名、备注、列表正文 |
-| `--text-caption` | 13px | 400 | 1.40 | 时间、次要元数据（secondary 色）|
+| `--text-h2` | 16px | 600 | 1.35 | 分区标题、分组标题 |
+| `--text-body-lg` | 16px | 500 | 1.50 | 列表类别名、按钮文字 |
+| `--text-body` | 15px | 400 | 1.50 | 正文、备注 |
+| `--text-caption` | 13px | 400 | 1.40 | 时间、辅助元数据（secondary 色）|
 | `--text-micro` | 12px | 500 | 1.30 | 标签、徽章、单位（¥/期）|
 
+> 首页特殊层级（vivo 对齐）：**今日支出 32/700（主数、中性色）** → 本月支出/收入 20/600（中性色）→ 本月结余 15/600（弱化）。报表汇总主数 32/700，列表金额 17/600；辅助标签统一 13，避免“数字很大、说明很小”。
+
 **金额铁律**：`tabular-nums` + 千分位（`Intl.NumberFormat('zh-CN')`，`¥` 前缀同字号、字重可降一档）。金额组件需自适应字号（字符数估宽/测量缩放，如 `fitAmount`），**禁止缩写（如"万/亿"）、禁止溢出**。
-**对齐（v14 定稿）**：默认 `text-align:right`（流水行/表单）；**概览卡/汇总卡按布局指定**——首页概览：今日支出左对齐、本月支出右对齐（label 同步）、本月收入左对齐；报表汇总 2×2：支出/比上月支出左对齐、日均支出/收支结余右对齐（label 同步）。
+**对齐（v15 沿用 v14 定稿）**：默认 `text-align:right`（流水行/表单）；**概览卡/汇总卡按布局指定**——首页概览：今日支出左对齐、本月支出右对齐（label 同步）、本月收入左对齐；报表汇总 2×2：支出/比上月支出左对齐、日均支出/收支结余右对齐（label 同步）。
 
 ### 2.3 Spacing / Radius / Shadow
 
@@ -101,16 +103,17 @@
 
 ### 2.4 Component Styles
 
-**① 底部 Tab Bar（4 项：首页/报表/卡片/我的）**
+**① 底部 Tab Bar（4 Tab + 中央「记一笔」动作）**
 - 高 56px + `env(safe-area-inset-bottom)`；底白、顶 `1px --color-border` + `--shadow-sm`。
-- 每项：线性图标 24px（stroke 2）+ 文字 11px/500；命中区 ≥48×48。
-- 未选：`--color-text-secondary`；选中：图标+文字 `--color-primary`，顶部加 2px×20px 圆角指示条（radius 1px）。**不用背景色块/胶囊高亮**（保持极简）。
+- 4 个 Tab：首页 / 报表 / 资产 / 我的；每项线性图标 24px（stroke 2）+ 文字 11px/500；命中区 ≥48×48。
+- 未选：`--color-text-secondary`；选中：图标+文字 `--color-primary`，顶部加 2px×20px 圆角指示条（radius 1px）。**不用背景色块/胶囊高亮**。
+- 第 3 个位置是**中央「记一笔」动作**（不属于 Tab）：40px primary 圆形 + 白色"+"、3px 白描边、`--shadow-fab`；下方 11px「记一笔」。点击打开记账 Sheet。
 - 分屏之间无竖线分隔。
 
-**② 悬浮按钮 FAB（"+" 记账）**
-- 固定：`right:16px; bottom: calc(56px + safe-area-inset-bottom + 16px)`；仅首页（Sheet 打开时隐藏）。
-- 56×56，`--radius-full`，`--color-primary` 底，白"+" 24px（stroke 2.5），`--shadow-fab`。
-- 按压：`--color-primary-hover` + `scale(.96)`；点击触发**半屏底部 Sheet**（覆盖 ~85% 高，顶 `radius-xl`，含拖拽把手）。
+**② 中央「记一笔」按钮**
+- 位置：Tab Bar 中间槽位，替代右下角 FAB；不遮挡列表内容。
+- 40×40，`--radius-full`，`--color-primary` 底，白"+" 24px（stroke 2.2），3px `--color-bg` 描边，`--shadow-fab`。
+- 按压：`--color-primary-hover` + `scale(.96)`；点击触发记账 Sheet（长表单使用近全屏 `sheet--tall`，顶部留 44px 状态栏，含拖拽把手）。
 
 **③ 进度条（周期 已还/剩余/总期数）**
 - 轨道：`--color-surface-2`，高 8px，`radius-full`；填充：`--color-liability`(橙) 表"已还进度"，宽=百分比。
@@ -119,9 +122,9 @@
 
 **④ 卡片组件（三型统一基座）**
 - 基座：白底、`1px --color-border`、`--radius-lg`、padding 16px、`--shadow-xs`（或无阴影仅边框）。
-- **流水项**：左 40px 圆角-full 徽章（浅底+20px 线性图标）→ 中（类别 `--text-body` / 备注·时间 `--text-caption` secondary）→ 右金额 `--text-amount-lg` 按状态着色、右对齐 tnum。行 padding 12px 16px。
-- **概览卡**：`--radius-xl`，2 列 grid；今日支出/本月支出（`--text-amount-lg`）+ 本月收入整行（`--text-amount-xl`）。**对齐（v14）**：今日支出整格左对齐、本月支出整格右对齐（label 同步）、本月收入左对齐。
-- **报表汇总卡**（2×2）：支出/日均支出/比上月支出/收支结余；**对齐（v14）**：支出、比上月支出左对齐；日均支出、收支结余右对齐（label 同步）。
+- **流水项**：左 24px 线性类别图标（无底色，按图标固定色）→ 中（类别 `--text-body` / 备注·时间 `--text-caption` secondary）→ 右金额 `--text-amount-lg` 按状态着色、右对齐 tnum。行 padding 12px 16px。
+- **概览卡**：`--radius-xl`，2 列 grid；今日支出/本月支出（`--text-amount-lg`）+ 本月收入整行（`--text-amount-xl`）。**对齐（v15 沿用 v14）**：今日支出整格左对齐、本月支出整格右对齐（label 同步）、本月收入左对齐。
+- **报表汇总卡**（2×2）：支出/日均支出/比上月支出/收支结余；**对齐（v15 沿用 v14）**：支出、比上月支出左对齐；日均支出、收支结余右对齐（label 同步）。
 - **环比箭头**（比上月支出）：箭头 `--text-caption`(13px)/400/`opacity:.75`，紧贴数字（无空格，margin-right 1px）；百分比保持 `--text-amount-lg`。主视觉是数字，箭头仅弱化辅助。
 - **卡片实体（储值卡）**：全站**唯一**允许的 1 处 2-stops 品牌渐变 `linear-gradient(135deg,#4F46E5,#4338CA)`；白字：名称/类型徽章/余额 `--text-amount-md`/有效期 `--text-caption`。
 
@@ -139,7 +142,7 @@
 **⑧ 图表占位规范**
 - 容器：白卡 `--radius-lg`，最小高 200px。
 - 折线/柱状：浅网格线 `--color-divider`；主序列 `--color-primary`，对比序列用 `--color-liability`；最多 2 序列，无重渐变。
-- 环形：外圈 `border:12px --color-divider`，主弧 `--color-primary`；中心放**占比 % 或自适应金额**（fitAmount 字符数估宽缩放，禁止缩写/溢出）；图例为小行（色点+标签+金额）。
+- 环形：外圈 `border:12px --color-divider`，分类弧段与分类色点使用对应分类图标色；中心放**占比 % 或自适应金额**（fitAmount 字符数估宽缩放，禁止缩写/溢出）；图例为小行（色点+标签+金额）。
 - 轴标签 `--text-caption` secondary。
 
 **⑨ 空 / 加载 / 成功 / 危险态**
@@ -150,8 +153,10 @@
 
 ### 2.5 Icons
 - 风格：**线性（outline）为主**，stroke 1.75–2px、圆头圆角、24px 栅格；`stroke=currentColor` 以继承文字/语义色。
-- 类别图标：40px 圆角-full 浅底徽章 + 20px 线性图标（中性灰或按四态语义着色，**禁用每类一色**）。
-- 统一图标集（SF Symbols / Material Symbols / Lucide 风格）；FAB"+"用稍重 stroke。
+- 类别图标：24px 线性图标，**无底色徽章**；颜色由图标本身固定映射，同一图标在首页、报表、类别管理、卡详情等所有页面保持同色（如餐饮红、交通蓝、购物紫、工资绿、房贷橙）。图标色只用于图标，金额与正文仍用收支/负债语义色。
+- 图标配色集中维护在 `记账-app-v16/src/store.js` 的 `ICON_COLORS`，组件只读取映射，禁止在页面内单独改类别图标色。
+- 新增图标：在 `ICONS` 增加 24×24 线性 SVG path，在 `ICON_COLORS` 与 `--icon-*` 指定固定色，并在 `categoryIconChoices` 注册后即可出现在类别选择器；用户端不提供图标上传，长尾类别使用通用 `other` 图标。
+- 统一图标集（SF Symbols / Material Symbols / Lucide 风格）；中央“+”按钮用稍重 stroke。
 - **禁止 emoji 占位**。
 
 ---
@@ -159,8 +164,8 @@
 ## 3. Cautions（Anti-Slop 注意）
 
 - ❌ 过多渐变：仅卡片实体 1 处 2-stops 品牌渐变，其余纯色/描边。
-- ❌ 彩虹分类：类别图标统一中性灰底+单色线图标，或按四态语义着色，而非每类一色。
-- ❌ 阴影滥用：默认扁平+1px 边框；阴影只给 FAB / 底部 Sheet / 浮层。
+- ❌ 同一图标跨页不同色：不得按“支出/收入”把类别图标统一染红或染绿；以图标为键固定颜色，保证全局一致。
+- ❌ 阴影滥用：默认扁平+1px 边框；阴影只给中央按钮 / 底部 Sheet / 浮层。
 - ❌ emoji 占位图标：用统一线性图标集。
 - ❌ 金额比例字体：必须 `tabular-nums`、右对齐、千分位。
 - ❌ 高饱和撞色大色块：语义色只用于小面积数字/徽章，正文文本保持中性。
@@ -175,8 +180,8 @@
 ## 4. Responsive / 移动适配
 
 - 设计基准 375dp，覆盖至 430dp（iPhone Pro Max）；单列竖屏。
-- 安全区：`padding-top: env(safe-area-inset-top)`（状态栏）、`padding-bottom: env(safe-area-inset-bottom)`（Tab Bar/FAB）。
-- 单手热区：主操作（FAB、Tab、主按钮）落在屏幕下 1/3；次级操作上置。
+- 安全区：`padding-top: env(safe-area-inset-top)`（状态栏）、`padding-bottom: env(safe-area-inset-bottom)`（Tab Bar/中央按钮）。
+- 单手热区：主操作（中央“+”、Tab、主按钮）落在屏幕下 1/3；次级操作上置。
 - 断点仅作 dp 微调：`<375` 缩 `--space-4`→12px、金额 `--text-amount-lg`→20px；`>414` 放宽外边距至 `--space-5`。不引入横屏/平板布局（本期原生竖屏）。
 
 ---
@@ -187,7 +192,7 @@
 - 所有颜色/间距/圆角/字号一律走 CSS 变量，禁止硬编码新值。
 - 金额组件封装为独立原子：传入 `value` + `state(income|expense|liability|balance)`，内部负责 `¥`+千分位+`tabular-nums`+右对齐+状态色。
 - 语义色只上数字与徽章；列表正文/标题永远中性色。
-- 任何表面默认 `border + 无阴影`；仅 FAB/Sheet/Toast/Popover 加阴影。
+- 任何表面默认 `border + 无阴影`；仅中央按钮/Sheet/Toast/Popover 加阴影。
 
 ### 直接消费的 :root 速查
 ```css
@@ -211,7 +216,7 @@
 ### 6 屏令牌映射表（原型构建师直用）
 | 屏 | 主要组件 | 所用令牌 |
 |----|---------|---------|
-| ① 首页 | Tab Bar(选中=首页) / 概览卡 / 流水列表(今天·昨天·更早) / 搜索框 / FAB | primary-light(选中底)、amount-xl(概览)、amount-lg+四态色(流水)、surface-2(搜索框)、FAB(primary+shadow-fab) |
+| ① 首页 | Tab Bar(选中=首页) / 概览卡 / 流水列表(今天·昨天·更早) / 搜索框 / 中央“+” | primary-light(选中底)、amount-xl(结余)、amount-md+四态色(流水)、surface-2(搜索框)、primary+shadow-fab(中央按钮) |
 | ② 记账页 | 半屏 Sheet / 金额输入 / 类别 chips / 保存按钮 | radius-xl(Sheet 顶)、shadow-lg、amount-md tnum(输入)、radius-sm chips(选中 primary-light)、primary 按钮 |
 | ③ 周期性支出 | 分组卡 / 进度条 / 详情 | radius-lg(卡)、liability 橙(进度填充+剩余金额)、caption(期数标签) |
 | ④ 卡片管理 | 卡片实体 / 消费记录列表 / 有效期 / **卡片编辑（类型三选一 chips + 默认消费类别 chips）** | 唯一渐变(primary→primary-hover)、balance 白字 amount-md、divider(行)、caption(有效期)、radius-sm chips(默认消费类别单选) |

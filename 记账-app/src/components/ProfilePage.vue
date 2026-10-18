@@ -22,11 +22,6 @@
         <span class="mt">明细搜索</span>
         <span v-html="icon('chevron',18)"></span>
       </div>
-      <div class="item" @click="showToast('预算提醒（示例）')">
-        <span class="mi" v-html="icon('clock',20)"></span>
-        <span class="mt">预算提醒</span><span class="mv">已开启</span>
-        <span v-html="icon('chevron',18)"></span>
-      </div>
     </div>
     <div class="section-gap"></div>
     <div class="menu">
@@ -35,9 +30,9 @@
         <span class="mt">帮助与反馈</span>
         <span v-html="icon('chevron',18)"></span>
       </div>
-      <div class="item" @click="showToast('设置（示例）')">
-        <span class="mi" v-html="icon('edit',20)"></span>
-        <span class="mt">设置</span>
+      <div class="item" @click="nav('settings')">
+        <span class="mi" v-html="icon('settings',20)"></span>
+        <span class="mt">设置</span><span class="mv">备份与恢复</span>
         <span v-html="icon('chevron',18)"></span>
       </div>
     </div>

@@ -1,0 +1,19 @@
+{
+  "name": "ledger-app-v16",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "记账应用 v16 原型（账户 + 收支流水 + 存单）",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "vue": "^3.5.13"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.0",
+    "vite": "^7.0.0"
+  }
+}

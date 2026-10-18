@@ -17,9 +17,10 @@
         <section class="app-screen" :class="{active:store.tab==='profile'}"><profile-page/></section>
         <section class="app-screen" :class="{active:store.tab==='periodic'}"><periodic-page/></section>
         <section class="app-screen" :class="{active:store.tab==='search'}"><search-page/></section>
+        <section class="app-screen" :class="{active:store.tab==='settings'}"><settings-page/></section>
       </div>
 
-      <button class="fab" v-show="store.tab==='home'" @click="openSheet('记录')" aria-label="记一笔">
+      <button class="fab" v-show="store.tab==='home' && !store.sheet" @click="openSheet('记录')" aria-label="记一笔">
         <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
       </button>
 
@@ -29,6 +30,7 @@
       <card-sheet v-if="['卡片','充值','添加卡片','有效期'].includes(store.sheet)"/>
       <periodic-sheet v-if="['周期详情','周期编辑','提前还款'].includes(store.sheet)"/>
       <filter-sheet v-if="store.sheet==='筛选'"/>
+      <backup-sheet v-if="store.sheet==='备份'"/>
       <confirm-dialog/>
 
       <div class="toast" :class="{show:store.toastShow}">
@@ -62,10 +64,12 @@ import CardsPage from './components/CardsPage.vue'
 import ProfilePage from './components/ProfilePage.vue'
 import PeriodicPage from './components/PeriodicPage.vue'
 import SearchPage from './components/SearchPage.vue'
+import SettingsPage from './components/SettingsPage.vue'
 import RecordSheet from './components/RecordSheet.vue'
 import CardSheet from './components/CardSheet.vue'
 import PeriodicSheet from './components/PeriodicSheet.vue'
 import FilterSheet from './components/FilterSheet.vue'
+import BackupSheet from './components/BackupSheet.vue'
 import ConfirmDialog from './components/ConfirmDialog.vue'
 
 function tabActive(t){ return store.tabBar===t }

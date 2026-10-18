@@ -27,6 +27,14 @@ const ICONS = {
   edit:'<path d="M5 19h3l10-10-3-3L5 16z"/><path d="M14 6l3 3"/>',
   upload:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>',
   img:'<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>',
+  settings:'<path d="M4 7h10M18 7h2M4 12h4M12 12h8M4 17h7M15 17h5"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="13" cy="17" r="2"/>',
+  cloud:'<path d="M7 18h10a4 4 0 0 0 .6-8 6 6 0 0 0-11.4 1.6A3.5 3.5 0 0 0 7 18z"/>',
+  download:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',
+  lock:'<rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>',
+  database:'<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>',
+  eye:'<path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z"/><circle cx="12" cy="12" r="2.5"/>',
+  check:'<path d="M5 12.5 10 17l9-10"/>',
+  info:'<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 8v.5"/>',
   empty:'<path d="M4 13l3-8h10l3 8v6H4z"/><path d="M4 13h5l1 2h4l1-2h5"/>'
 }
 export function icon(name, size){
@@ -99,6 +107,28 @@ export const catColors = ['var(--color-liability)','var(--color-primary)','var(-
 export const timeCover = {'本周':['本周'],'本月':['本周','本月'],'本季':['本周','本月','本季'],'本年':['本周','本月','本季','本年']}
 export const rankPeriodMap = {'本周':['本周'], '本月':['本周','本月'], '本季':['本周','本月','本季'], '本年':['本周','本月','本季','本年']}
 
+/* ---------- 设置 / WebDAV 备份（原型 mock） ---------- */
+export const settingsData = reactive({
+  webdavUrl: 'https://dav.jianguoyun.com/dav/',
+  webdavUser: 'linxiao@example.com',
+  webdavPass: 'app-pass-2026',
+  webdavDir: '/记账备份/',
+  connected: true,
+  autoBackup: true,
+  lastBackup: '2026-06-22 08:30',
+  delCategory: 'keep',
+  delCard: 'keep',
+  delPeriod: 'keep'
+})
+
+export const backupsData = reactive([
+  { name:'backup_20260622_083000.zip', at:'2026-06-22 08:30', size:'2.4 MB' },
+  { name:'backup_20260621_221500.zip', at:'2026-06-21 22:15', size:'2.3 MB' },
+  { name:'backup_20260620_090000.zip', at:'2026-06-20 09:00', size:'2.3 MB' },
+  { name:'backup_20260618_203000.zip', at:'2026-06-18 20:30', size:'2.2 MB' },
+  { name:'backup_20260615_090000.zip', at:'2026-06-15 09:00', size:'2.2 MB' }
+])
+
 /* ---------- 全局状态 ---------- */
 export const store = reactive({
   tab: 'home',
@@ -124,9 +154,13 @@ export function showToast(msg){
   __toastTimer = setTimeout(function(){ store.toastShow = false }, 2000)
 }
 /* ---------- 删除确认弹窗 ---------- */
-export const confirmState = reactive({ show:false, message:'', onOk:null })
-export function askConfirm(message, onOk){
+export const confirmState = reactive({ show:false, title:'确认删除', message:'', confirmText:'删除', danger:true, onOk:null })
+export function askConfirm(message, onOk, options){
+  options = options || {}
+  confirmState.title = options.title || '确认删除'
   confirmState.message = message
+  confirmState.confirmText = options.confirmText || '删除'
+  confirmState.danger = options.danger !== false
   confirmState.onOk = onOk
   confirmState.show = true
 }
