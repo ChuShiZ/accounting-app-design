@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../组件/页面骨架.dart';
 import '../数据/仓库/账户仓库.dart';
+import '../数据/重置数据.dart';
 import '../状态/提供者.dart';
 import '../主题/令牌.dart';
 import '../同步/备份服务.dart';
@@ -29,6 +30,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   bool _showPass = false;
   bool _testing = false;
   bool _busy = false;
+  bool _clearing = false;
   bool _connected = false;
   bool _autoBackup = true;
   int _backupIntervalHours = 72;
@@ -169,7 +171,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 ),
                 SizedBox(height: tokens.space3),
                 OutlinedButton(
-                  onPressed: _testing ? null : _testConnection,
+                  onPressed: _testing || _clearing ? null : _testConnection,
                   style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(44), side: BorderSide(color: tokens.border), foregroundColor: tokens.textPrimary),
                   child: Text(_testing ? '连接中…' : '保存并测试连接'),
                 ),
@@ -301,7 +303,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   children: [
                     Expanded(
                       child: FilledButton(
-                        onPressed: _busy ? null : _backupNow,
+                        onPressed: _busy || _clearing ? null : _backupNow,
                         style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(44)),
                         child: Text(_busy ? '备份中…' : '立即备份'),
                       ),
@@ -309,7 +311,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     SizedBox(width: tokens.space3),
                     Expanded(
                       child: OutlinedButton(
-                        onPressed: () => _openBackups(),
+                        onPressed: _clearing ? null : () => _openBackups(),
                         style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(44), side: BorderSide(color: tokens.border), foregroundColor: tokens.textPrimary),
                         child: const Text('恢复备份'),
                       ),
@@ -349,6 +351,38 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 _aboutRow(context, '当前版本', _currentVersion),
                 _aboutRow(context, '数据存储', '本机 SQLite'),
                 _aboutRow(context, '备份格式', 'zip（db + 可选图片）'),
+              ],
+            ),
+          ),
+          SizedBox(height: tokens.space5),
+          _section(context, '危险操作'),
+          _card(
+            context,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Icon(LucideIcons.trash2, size: 18, color: tokens.expense),
+                    SizedBox(width: tokens.space2),
+                    Text('清空全部数据', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: tokens.expense)),
+                  ],
+                ),
+                SizedBox(height: 3),
+                Text(
+                  '删除全部流水、账户、类别、存单/贷款/信用卡资料和本地图片凭证；默认账户与预设类别会重新创建。不会删除 WebDAV 配置和云端备份。',
+                  style: TextStyle(fontSize: 11, height: 1.5, color: tokens.textSecondary),
+                ),
+                SizedBox(height: tokens.space3),
+                OutlinedButton(
+                  onPressed: _busy || _clearing ? null : _clearAllData,
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(44),
+                    side: BorderSide(color: tokens.expense.withValues(alpha: .45)),
+                    foregroundColor: tokens.expense,
+                  ),
+                  child: Text(_clearing ? '清空中…' : '清空全部数据'),
+                ),
               ],
             ),
           ),
@@ -549,6 +583,58 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     }
   }
 
+  Future<void> _clearAllData() async {
+    final first = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('清空全部数据？'),
+        content: const Text(
+          '将删除本机全部流水、账户、类别、存单/贷款/信用卡资料、周期规则和图片凭证。\n\n默认账户和预设类别会重新创建；WebDAV 配置和云端备份不会删除。',
+          style: TextStyle(height: 1.5),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(dialogContext).pop(false), child: const Text('取消')),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            style: FilledButton.styleFrom(backgroundColor: context.tokens.expense),
+            child: const Text('继续'),
+          ),
+        ],
+      ),
+    );
+    if (first != true || !mounted) return;
+
+    final second = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const _ClearConfirmDialog(),
+    );
+    if (second != true || !mounted) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _clearing = true);
+    try {
+      await DataResetService(ref.read(databaseProvider)).resetAll();
+      ref.invalidate(accountsProvider);
+      ref.invalidate(categoriesProvider);
+      ref.invalidate(categoryUsageProvider);
+      ref.invalidate(homeProvider);
+      ref.invalidate(reportDataProvider);
+      ref.invalidate(defaultAccountProvider);
+      ref.invalidate(accountTransactionsProvider);
+      if (!mounted) return;
+      await _load();
+      if (!mounted) return;
+      setState(() => _clearing = false);
+      messenger.showSnackBar(const SnackBar(content: Text('已清空全部数据')));
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _clearing = false);
+      messenger.showSnackBar(SnackBar(content: Text('清空失败：$error')));
+    }
+  }
+
   Widget _section(BuildContext context, String text) {
     final tokens = context.tokens;
     return Padding(
@@ -599,6 +685,57 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(tokens.radiusMd), borderSide: BorderSide(color: tokens.border)),
       enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(tokens.radiusMd), borderSide: BorderSide(color: tokens.border)),
       focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(tokens.radiusMd), borderSide: BorderSide(color: tokens.primary, width: 1.5)),
+    );
+  }
+}
+
+class _ClearConfirmDialog extends StatefulWidget {
+  const _ClearConfirmDialog();
+
+  @override
+  State<_ClearConfirmDialog> createState() => _ClearConfirmDialogState();
+}
+
+class _ClearConfirmDialogState extends State<_ClearConfirmDialog> {
+  final _confirm = TextEditingController();
+
+  @override
+  void dispose() {
+    _confirm.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return AlertDialog(
+      title: const Text('再次确认清空'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text('此操作不可撤销。请输入「清空」两个字确认。', style: TextStyle(height: 1.5)),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _confirm,
+            autofocus: true,
+            decoration: const InputDecoration(
+              hintText: '请输入：清空',
+              border: OutlineInputBorder(),
+              isDense: true,
+            ),
+            onChanged: (_) => setState(() {}),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('取消')),
+        FilledButton(
+          onPressed: _confirm.text.trim() == '清空' ? () => Navigator.of(context).pop(true) : null,
+          style: FilledButton.styleFrom(backgroundColor: tokens.expense),
+          child: const Text('确认清空'),
+        ),
+      ],
     );
   }
 }

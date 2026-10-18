@@ -288,4 +288,39 @@ void main() {
     expect(interest.parentId, invest.id);
     expect(categories.where((c) => c.name == '其他').length, 2);
   });
+
+  testWidgets('settings clear-all requires two confirmations', (tester) async {
+    final db = AppDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    await seedPresetData(db);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [databaseProvider.overrideWithValue(db)],
+        child: const JizhangApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('我的').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('设置'));
+    await tester.pumpAndSettle();
+
+    final clearButton = find.widgetWithText(OutlinedButton, '清空全部数据');
+    await tester.ensureVisible(clearButton);
+    await tester.pumpAndSettle();
+    await tester.tap(clearButton);
+    await tester.pumpAndSettle();
+    expect(find.text('清空全部数据？'), findsOneWidget);
+
+    await tester.tap(find.text('继续'));
+    await tester.pumpAndSettle();
+    expect(find.text('再次确认清空'), findsOneWidget);
+    expect(find.text('确认清空'), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(TextButton, '取消').last);
+    await tester.pumpAndSettle();
+    expect(find.text('再次确认清空'), findsNothing);
+    expect((await db.select(db.transactions).get()), isEmpty);
+    expect((await db.select(db.categories).get()).length, greaterThan(50));
+  });
 }

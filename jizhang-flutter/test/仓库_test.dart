@@ -13,6 +13,7 @@ import 'package:jizhang/数据/仓库/账户仓库.dart';
 import 'package:jizhang/数据/仓库/资产仓库.dart';
 import 'package:jizhang/数据/种子数据.dart';
 import 'package:jizhang/数据/首页数据.dart';
+import 'package:jizhang/数据/重置数据.dart';
 import 'package:jizhang/同步/备份服务.dart';
 import 'package:jizhang/导入/excel分类映射.dart';
 import 'package:jizhang/导入/excel导入服务.dart';
@@ -532,5 +533,31 @@ void main() {
     expect(rows.length, 1);
     final food = (await categories.findByName('餐饮', 'expense'))!;
     expect(rows.single.categoryId, food.id);
+  });
+
+  test('清空全部数据后恢复默认账户和预设类别', () async {
+    final bank = await accounts.createBankAccount(name: '要清空的卡', openingBalance: 100000);
+    final food = (await categories.findByName('餐饮', 'expense'))!;
+    await transactions.addExpense(
+      amount: 1234,
+      accountId: bank,
+      categoryId: food.id,
+      occurredAt: DateTime(2026, 10, 18),
+      note: '清空测试',
+    );
+    await settings.set('default_account_id', bank.toString());
+    await settings.set('webdav_url', 'https://example.com/dav/');
+
+    await DataResetService(db).resetAll(clearFiles: false);
+
+    expect(await db.select(db.transactions).get(), isEmpty);
+    final accountRows = await db.select(db.accounts).get();
+    expect(accountRows.length, 1);
+    expect(accountRows.single.type, 'default');
+    final categoryRows = await db.select(db.categories).get();
+    expect(categoryRows.length, greaterThan(50));
+    expect(await settings.get('webdav_url'), 'https://example.com/dav/');
+    expect(await settings.get('default_account_id'), isNull);
+    expect(await settings.get('category_tree_version'), '2');
   });
 }
