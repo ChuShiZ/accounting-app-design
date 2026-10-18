@@ -25,7 +25,6 @@ class HomePage extends ConsumerStatefulWidget {
 
 class _HomePageState extends ConsumerState<HomePage> {
   final _search = TextEditingController();
-  bool _searching = false;
 
   @override
   void dispose() {
@@ -41,24 +40,9 @@ class _HomePageState extends ConsumerState<HomePage> {
     return PageScaffold(
       subtitle: '${now.year}年${now.month}月${now.day}日 ${_weekday(now.weekday)}',
       title: '我的账单',
-      action: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          IconButton(
-            onPressed: () {
-              setState(() {
-                _searching = !_searching;
-                if (!_searching) _search.clear();
-              });
-            },
-            icon: Icon(_searching ? LucideIcons.x : LucideIcons.search, color: tokens.textPrimary),
-            tooltip: _searching ? '关闭搜索' : '搜索',
-            style: IconButton.styleFrom(minimumSize: const Size(36, 36), padding: EdgeInsets.zero),
-          ),
-          if (snapshot.valueOrNull?.dueItems.isNotEmpty == true)
-            _DuePill(count: snapshot.value!.dueItems.length, onTap: () => _openDue(context)),
-        ],
-      ),
+      action: snapshot.valueOrNull?.dueItems.isNotEmpty == true
+          ? _DuePill(count: snapshot.value!.dueItems.length, onTap: () => _openDue(context))
+          : null,
       child: snapshot.when(
         loading: () => Padding(
           padding: EdgeInsets.symmetric(vertical: tokens.space10),
@@ -92,87 +76,99 @@ class _HomePageState extends ConsumerState<HomePage> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Container(
-          padding: EdgeInsets.all(tokens.space4),
+          padding: EdgeInsets.all(tokens.space3),
           decoration: BoxDecoration(
             color: tokens.bg,
-            borderRadius: BorderRadius.circular(tokens.radiusLg),
+            borderRadius: BorderRadius.circular(tokens.radiusXl),
             border: Border.all(color: tokens.border),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Text('今日支出', style: TextStyle(fontSize: 11, height: 1.2, color: tokens.textSecondary)),
+              SizedBox(height: 2),
+              Text(
+                formatCents(data.todayExpense),
+                style: TextStyle(
+                  fontSize: 26,
+                  height: 1.1,
+                  fontWeight: FontWeight.w700,
+                  color: tokens.textPrimary,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
+              ),
+              SizedBox(height: tokens.space2),
               Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Expanded(child: Text('今日支出', style: TextStyle(fontSize: 12, color: tokens.textSecondary))),
+                  Expanded(child: _metric(context, '本月支出', formatCents(data.monthExpense))),
+                  Expanded(child: _metric(context, '本月收入', formatCents(data.monthIncome), alignEnd: true)),
+                ],
+              ),
+              Divider(height: 6, color: tokens.divider),
+              Row(
+                children: [
+                  Expanded(child: Text('本月结余', style: TextStyle(fontSize: 12, height: 1.2, color: tokens.textSecondary))),
                   Text(
-                    formatCents(data.todayExpense),
+                    formatCents(data.monthBalance, signed: true),
                     style: TextStyle(
-                      fontSize: 26,
-                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                      height: 1.2,
+                      fontWeight: FontWeight.w600,
                       color: tokens.textPrimary,
                       fontFeatures: const [FontFeature.tabularFigures()],
                     ),
                   ),
                 ],
               ),
-              SizedBox(height: tokens.space2),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(child: _metric(context, '本月支出', formatCents(data.monthExpense))),
-                  Expanded(child: _metric(context, '本月收入', formatCents(data.monthIncome))),
-                  Expanded(child: _metric(context, '本月结余', formatCents(data.monthBalance, signed: true))),
-                ],
-              ),
             ],
           ),
         ),
-        if (_searching) ...[
-          SizedBox(height: tokens.space3),
-          Container(
-            height: 38,
-            padding: EdgeInsets.symmetric(horizontal: tokens.space3),
-            decoration: BoxDecoration(
-              color: tokens.surface2,
-              borderRadius: BorderRadius.circular(tokens.radiusMd),
-            ),
-            child: Row(
-              children: [
-                Icon(LucideIcons.search, size: 17, color: tokens.textSecondary),
-                SizedBox(width: tokens.space2),
-                Expanded(
-                  child: TextField(
-                    controller: _search,
-                    autofocus: true,
-                    onChanged: (_) => setState(() {}),
-                    decoration: InputDecoration(
-                      hintText: '搜索类别、备注、账户',
-                      hintStyle: TextStyle(fontSize: 13, color: tokens.textDisabled),
-                      border: InputBorder.none,
-                      isDense: true,
-                    ),
-                    style: TextStyle(fontSize: 13, color: tokens.textPrimary),
-                  ),
-                ),
-                if (_search.text.isNotEmpty)
-                  GestureDetector(
-                    onTap: () {
-                      _search.clear();
-                      setState(() {});
-                    },
-                    child: Text('清除', style: TextStyle(fontSize: 12, color: tokens.primary, fontWeight: FontWeight.w500)),
-                  ),
-              ],
-            ),
+        SizedBox(height: tokens.space3),
+        Container(
+          height: 38,
+          padding: EdgeInsets.symmetric(horizontal: tokens.space3),
+          decoration: BoxDecoration(
+            color: tokens.surface2,
+            borderRadius: BorderRadius.circular(tokens.radiusMd),
           ),
-        ],
-        SizedBox(height: tokens.space4),
-        Text('最近交易', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: tokens.textPrimary)),
+          child: Row(
+            children: [
+              Icon(LucideIcons.search, size: 18, color: tokens.textSecondary),
+              SizedBox(width: tokens.space2),
+              Expanded(
+                child: TextField(
+                  controller: _search,
+                  onChanged: (_) => setState(() {}),
+                  decoration: InputDecoration(
+                    hintText: '搜索类别、备注、账户',
+                    hintStyle: TextStyle(fontSize: 14, color: tokens.textDisabled),
+                    border: InputBorder.none,
+                    isDense: true,
+                  ),
+                  style: TextStyle(fontSize: 14, color: tokens.textPrimary),
+                ),
+              ),
+              if (_search.text.isNotEmpty)
+                GestureDetector(
+                  onTap: () {
+                    _search.clear();
+                    setState(() {});
+                  },
+                  child: Text('清除', style: TextStyle(fontSize: 13, color: tokens.primary, fontWeight: FontWeight.w500)),
+                ),
+            ],
+          ),
+        ),
+        SizedBox(height: tokens.space3),
+        Row(
+          children: [
+            Text('最近交易', style: TextStyle(fontSize: 16, height: 1.2, fontWeight: FontWeight.w600, color: tokens.textPrimary)),
+          ],
+        ),
         SizedBox(height: tokens.space1),
         if (groups.isEmpty)
           Padding(
-            padding: EdgeInsets.only(top: tokens.space6),
+            padding: EdgeInsets.only(top: tokens.space8),
             child: Column(
               children: [
                 Container(
@@ -197,9 +193,9 @@ class _HomePageState extends ConsumerState<HomePage> {
               padding: EdgeInsets.only(top: tokens.space2, bottom: tokens.space1),
               child: Row(
                 children: [
-                  Expanded(child: Text(group.label, style: TextStyle(fontSize: 12, color: tokens.textSecondary))),
+                  Expanded(child: Text(group.label, style: TextStyle(fontSize: 12, height: 1.2, color: tokens.textSecondary))),
                   if (group.expense > 0)
-                    Text(formatCents(group.expense), style: TextStyle(fontSize: 12, color: tokens.textSecondary, fontFeatures: const [FontFeature.tabularFigures()])),
+                    Text(formatCents(group.expense), style: TextStyle(fontSize: 12, height: 1.2, color: tokens.textSecondary, fontFeatures: const [FontFeature.tabularFigures()])),
                 ],
               ),
             ),
@@ -227,19 +223,18 @@ class _HomePageState extends ConsumerState<HomePage> {
     );
   }
 
-  Widget _metric(BuildContext context, String label, String value) {
+  Widget _metric(BuildContext context, String label, String value, {bool alignEnd = false}) {
     final tokens = context.tokens;
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: alignEnd ? CrossAxisAlignment.end : CrossAxisAlignment.start,
       children: [
-        Text(label, style: TextStyle(fontSize: 11, color: tokens.textSecondary)),
+        Text(label, style: TextStyle(fontSize: 11, height: 1.2, color: tokens.textSecondary)),
         SizedBox(height: 2),
         Text(
           value,
-          maxLines: 1,
-          overflow: TextOverflow.fade,
           style: TextStyle(
-            fontSize: 14,
+            fontSize: 16,
+            height: 1.2,
             fontWeight: FontWeight.w600,
             color: tokens.textPrimary,
             fontFeatures: const [FontFeature.tabularFigures()],
@@ -359,7 +354,7 @@ class _FlowTile extends StatelessWidget {
                 children: [
                   Text(
                     item.categoryName,
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: tokens.textPrimary),
+                    style: TextStyle(fontSize: 16, height: 1.2, fontWeight: FontWeight.w500, color: tokens.textPrimary),
                     overflow: TextOverflow.ellipsis,
                   ),
                   SizedBox(height: 2),
@@ -372,7 +367,7 @@ class _FlowTile extends StatelessWidget {
                       Expanded(
                         child: Text(
                           '${item.transaction.note?.isNotEmpty == true ? item.transaction.note : item.accountName} · $hh:$mm',
-                          style: TextStyle(fontSize: 13, color: tokens.textSecondary),
+                          style: TextStyle(fontSize: 13, height: 1.2, color: tokens.textSecondary),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
