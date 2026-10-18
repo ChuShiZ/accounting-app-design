@@ -8,6 +8,7 @@ import '../组件/页面骨架.dart';
 import '../组件/类别展示.dart';
 import '../组件/账户展示.dart';
 import '../组件/记账表单.dart';
+import '../组件/流水操作.dart';
 import '../数据/仓库/报表仓库.dart';
 import '../状态/提供者.dart';
 import '../主题/令牌.dart';
@@ -214,7 +215,12 @@ class _ReportPageState extends ConsumerState<ReportPage> {
                       )
                     else ...[
                       for (var i = 0; i < visibleTop.length; i++) ...[
-                        _RankRow(item: visibleTop[i], kind: kind, onTap: () => showRecordSheet(context, transaction: visibleTop[i].transaction)),
+                        _RankRow(
+                          item: visibleTop[i],
+                          kind: kind,
+                          onTap: () => showRecordSheet(context, transaction: visibleTop[i].transaction),
+                          onLongPress: () => deleteTransactionWithConfirm(context, ref, visibleTop[i].transaction),
+                        ),
                         if (i < visibleTop.length - 1) Divider(height: 1, color: tokens.divider),
                       ],
                       if (filteredTop.length > 8)
@@ -533,11 +539,12 @@ class _CategoryCard extends StatelessWidget {
 }
 
 class _RankRow extends StatelessWidget {
-  const _RankRow({required this.item, required this.kind, required this.onTap});
+  const _RankRow({required this.item, required this.kind, required this.onTap, required this.onLongPress});
 
   final ReportItem item;
   final String kind;
   final VoidCallback onTap;
+  final VoidCallback onLongPress;
 
   @override
   Widget build(BuildContext context) {
@@ -545,6 +552,7 @@ class _RankRow extends StatelessWidget {
     final t = item.transaction;
     return InkWell(
       onTap: onTap,
+      onLongPress: onLongPress,
       child: Padding(
         padding: EdgeInsets.symmetric(vertical: tokens.space3),
         child: Row(

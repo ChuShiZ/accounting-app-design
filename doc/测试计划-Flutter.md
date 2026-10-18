@@ -1,7 +1,7 @@
 # Flutter 记账 App · 测试计划与执行结果
 
 > 日期：2026-10-18 ｜ 构建：x86_64 debug APK ｜ 设备：MuMu Player 12（Android 12 / API 32）
-> 自动化：`flutter test` 25/25；静态检查：`flutter analyze` 0 issue。
+> 自动化：`flutter test` 26/26；静态检查：`flutter analyze` 0 issue。
 
 ## 1. 自动化测试
 
@@ -62,6 +62,8 @@
 | 26 | Excel 重复导入：全部识别为重复，不重复落库 | PASS（仓储测试） |
 | 27 | 默认账户：自动创建、无余额、不可编辑/删除；未指定账户的流水归入 | PASS |
 | 28 | 默认账户在记账/Excel 导入中作为回退账户显示“默认”且不显示余额 | PASS |
+| 29 | 首页长按普通流水 → 确认删除 → 余额/报表同步回退 | PASS |
+| 30 | 首页不再显示本月结余，结余仅在报表 | PASS |
 
 ## 3. 未执行 / N/A
 

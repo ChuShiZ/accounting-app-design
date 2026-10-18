@@ -26,6 +26,7 @@ void main() {
 
     expect(find.text('我的账单'), findsOneWidget);
     expect(find.text('还没有记录'), findsOneWidget);
+    expect(find.text('本月结余'), findsNothing);
     expect(find.text('首页'), findsWidgets);
     expect(find.text('报表'), findsWidgets);
     expect(find.text('资产'), findsWidgets);
@@ -146,8 +147,40 @@ void main() {
     expect(find.text('¥12.34'), findsWidgets);
   });
 
-  testWidgets('report page renders metrics without AI summary', (tester) async {
+  testWidgets('long press transaction asks to delete and removes it', (tester) async {
     final db = AppDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    await seedPresetData(db);
+    final account = (await AccountRepository(db).listWithBalances())
+        .firstWhere((view) => view.account.type == 'default');
+    final category = (await db.select(db.categories).get())
+        .firstWhere((row) => row.name == '餐饮' && row.type == 'expense');
+    await TransactionRepository(db).addExpense(
+      amount: 1234,
+      accountId: account.account.id,
+      categoryId: category.id,
+      occurredAt: DateTime.now(),
+      note: '长按删除测试',
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [databaseProvider.overrideWithValue(db)],
+        child: const JizhangApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.longPress(find.text('餐饮'));
+    await tester.pumpAndSettle();
+    expect(find.text('删除流水'), findsOneWidget);
+    await tester.tap(find.text('删除').last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('还没有记录'), findsOneWidget);
+    expect((await db.select(db.transactions).get()), isEmpty);
+  });
+
+  testWidgets('report page renders metrics without AI summary', (tester) async {    final db = AppDatabase(NativeDatabase.memory());
     addTearDown(db.close);
     await seedPresetData(db);
     final accounts = AccountRepository(db);

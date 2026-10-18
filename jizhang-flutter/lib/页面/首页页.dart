@@ -12,6 +12,7 @@ import '../组件/存单表单.dart';
 import '../组件/存单动作.dart';
 import '../组件/充值表单.dart';
 import '../组件/还款表单.dart';
+import '../组件/流水操作.dart';
 import '../数据/首页数据.dart';
 import '../状态/提供者.dart';
 import '../主题/令牌.dart';
@@ -104,28 +105,6 @@ class _HomePageState extends ConsumerState<HomePage> {
                   Expanded(child: _metric(context, '本月收入', formatCents(data.monthIncome), alignEnd: true)),
                 ],
               ),
-              SizedBox(height: tokens.space2),
-              Container(
-                padding: EdgeInsets.only(top: tokens.space3),
-                decoration: BoxDecoration(
-                  border: Border(top: BorderSide(color: tokens.divider)),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(child: Text('本月结余', style: TextStyle(fontSize: 12, height: 1.2, color: tokens.textSecondary))),
-                    Text(
-                      formatCents(data.monthBalance, signed: true),
-                      style: TextStyle(
-                        fontSize: 13,
-                        height: 1.2,
-                        fontWeight: FontWeight.w600,
-                        color: tokens.textPrimary,
-                        fontFeatures: const [FontFeature.tabularFigures()],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
             ],
           ),
         ),
@@ -217,6 +196,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                     _FlowTile(
                       item: group.items[i],
                       onTap: () => showRecordSheet(context, transaction: group.items[i].transaction),
+                      onLongPress: () => deleteTransactionWithConfirm(context, ref, group.items[i].transaction),
                     ),
                     if (i < group.items.length - 1) Divider(height: 1, indent: 52, color: tokens.divider),
                   ],
@@ -332,10 +312,11 @@ class _HomePageState extends ConsumerState<HomePage> {
 }
 
 class _FlowTile extends StatelessWidget {
-  const _FlowTile({required this.item, required this.onTap});
+  const _FlowTile({required this.item, required this.onTap, required this.onLongPress});
 
   final HomeTransaction item;
   final VoidCallback onTap;
+  final VoidCallback onLongPress;
 
   @override
   Widget build(BuildContext context) {
@@ -348,6 +329,7 @@ class _FlowTile extends StatelessWidget {
     final mm = time.minute.toString().padLeft(2, '0');
     return InkWell(
       onTap: onTap,
+      onLongPress: onLongPress,
       child: Padding(
         padding: EdgeInsets.symmetric(horizontal: tokens.space4, vertical: 9),
         child: Row(
