@@ -7,6 +7,7 @@ import 'package:jizhang/主入口.dart';
 import 'package:jizhang/数据/数据库.dart';
 import 'package:jizhang/数据/种子数据.dart';
 import 'package:jizhang/数据/仓库/账户仓库.dart';
+import 'package:jizhang/数据/仓库/资产仓库.dart';
 import 'package:jizhang/数据/仓库/类别仓库.dart';
 import 'package:jizhang/数据/仓库/交易仓库.dart';
 import 'package:jizhang/数据/仓库/设置仓库.dart';
@@ -324,5 +325,39 @@ void main() {
     expect(find.text('再次确认清空'), findsNothing);
     expect((await db.select(db.transactions).get()), isEmpty);
     expect((await db.select(db.categories).get()).length, greaterThan(50));
+  });
+
+  testWidgets('assets deposit overview and compact list render', (tester) async {
+    tester.view.physicalSize = const Size(1080, 1920);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    final db = AppDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    await seedPresetData(db);
+    await AssetRepository(db).createDeposit(
+      name: '招商五万一年存',
+      bank: '招商银行',
+      principal: 5000000,
+      rateBp: 130,
+      termMonths: 12,
+      startAt: DateTime(2026, 10, 17),
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [databaseProvider.overrideWithValue(db)],
+        child: const JizhangApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('资产').last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('存单本金'), findsOneWidget);
+    expect(find.text('预计利息'), findsOneWidget);
+    expect(find.text('存续 1 张'), findsOneWidget);
+    expect(find.text('招商五万一年存'), findsOneWidget);
+    expect(find.text('全部'), findsOneWidget);
+    expect(find.text('即将到期'), findsOneWidget);
+    expect(find.text('添加存单'), findsOneWidget);
   });
 }
