@@ -85,7 +85,7 @@ class _HomePageState extends ConsumerState<HomePage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('今日支出', style: TextStyle(fontSize: 11, height: 1.2, color: tokens.textSecondary)),
+              Text('今日支出', style: TextStyle(fontSize: 10, height: 1.2, color: tokens.textSecondary)),
               SizedBox(height: 2),
               Text(
                 formatCents(data.todayExpense),
@@ -104,21 +104,27 @@ class _HomePageState extends ConsumerState<HomePage> {
                   Expanded(child: _metric(context, '本月收入', formatCents(data.monthIncome), alignEnd: true)),
                 ],
               ),
-              Divider(height: 6, color: tokens.divider),
-              Row(
-                children: [
-                  Expanded(child: Text('本月结余', style: TextStyle(fontSize: 12, height: 1.2, color: tokens.textSecondary))),
-                  Text(
-                    formatCents(data.monthBalance, signed: true),
-                    style: TextStyle(
-                      fontSize: 13,
-                      height: 1.2,
-                      fontWeight: FontWeight.w600,
-                      color: tokens.textPrimary,
-                      fontFeatures: const [FontFeature.tabularFigures()],
+              SizedBox(height: tokens.space2),
+              Container(
+                padding: EdgeInsets.only(top: tokens.space3),
+                decoration: BoxDecoration(
+                  border: Border(top: BorderSide(color: tokens.divider)),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(child: Text('本月结余', style: TextStyle(fontSize: 12, height: 1.2, color: tokens.textSecondary))),
+                    Text(
+                      formatCents(data.monthBalance, signed: true),
+                      style: TextStyle(
+                        fontSize: 13,
+                        height: 1.2,
+                        fontWeight: FontWeight.w600,
+                        color: tokens.textPrimary,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ],
           ),
