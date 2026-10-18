@@ -3,10 +3,20 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '主题/主题.dart';
 import '路由/路由.dart';
+import '数据/数据库.dart';
+import '数据/种子数据.dart';
+import '状态/提供者.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const ProviderScope(child: JizhangApp()));
+  final db = AppDatabase.open();
+  await seedPresetData(db);
+  runApp(
+    ProviderScope(
+      overrides: [databaseProvider.overrideWithValue(db)],
+      child: const JizhangApp(),
+    ),
+  );
 }
 
 class JizhangApp extends StatelessWidget {

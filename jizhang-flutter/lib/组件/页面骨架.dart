@@ -8,11 +8,13 @@ class PageScaffold extends StatelessWidget {
     super.key,
     required this.title,
     this.subtitle,
+    this.action,
     required this.child,
   });
 
   final String title;
   final String? subtitle;
+  final Widget? action;
   final Widget child;
 
   @override
@@ -30,24 +32,31 @@ class PageScaffold extends StatelessWidget {
               tokens.space4,
               tokens.space4,
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
               children: [
-                if (subtitle != null) ...[
-                  Text(
-                    subtitle!,
-                    style: TextStyle(fontSize: 13, color: tokens.textSecondary),
-                  ),
-                  SizedBox(height: tokens.space1),
-                ],
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w600,
-                    color: tokens.textPrimary,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (subtitle != null) ...[
+                        Text(
+                          subtitle!,
+                          style: TextStyle(fontSize: 13, color: tokens.textSecondary),
+                        ),
+                        SizedBox(height: tokens.space1),
+                      ],
+                      Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w600,
+                          color: tokens.textPrimary,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
+                ?action,
               ],
             ),
           ),

@@ -4,7 +4,7 @@
 > 主计划：`../ANDROID_PLAN.md` ｜ 视觉基准：`../DESIGN.md`
 > 文档基线：**v16**（2026-10-18）——主设计 `设计-账户资产模型.md`；`ANDROID_PLAN.md` / `DESIGN.md` / 本目录以 v16 为准，标注 v15 的文档仅作历史参考
 > **v16 原型**：`../记账-app-v16/`（Vue 3，4 Tab + 资产/存单/记账；v15 原型保留在 `../记账-app/`）
-> **Flutter 实现**：`../jizhang-flutter/`（批次 0：主题/4 Tab/drift 8 表/Repository/单测/Android debug APK）
+> **Flutter 实现**：`../jizhang-flutter/`（批次 0 + 1：主题/4 Tab/drift 8 表/Repository/资产页/账户 CRUD；MuMu 启动验证）
 > **v16 文档已同步**：账户/资产模型以 `设计-账户资产模型.md` 为准；数据模型/UI架构/实现规格/交互规格已重写为 v16。卡片余额/删除联动等旧文档仅作历史参考。
 
 ## 文档地图

@@ -79,6 +79,31 @@ void main() {
     expect(totals.balance, 70000);
   });
 
+  test('账户编辑、重名检查与无流水删除', () async {
+    final id = await accounts.createBankAccount(name: '招行卡', openingBalance: 10000);
+    expect(await accounts.nameExists('招行卡'), isTrue);
+    expect(await accounts.nameExists('招行卡', excludeId: id), isFalse);
+    await accounts.updateBankAccount(id, name: '招行储蓄卡', institution: '招商银行');
+    final updated = await accounts.findById(id);
+    expect(updated!.name, '招行储蓄卡');
+    expect(updated.institution, '招商银行');
+
+    final deleted = await accounts.deleteOrArchiveAccount(id);
+    expect(deleted, isTrue);
+    expect(await accounts.findById(id), isNull);
+  });
+
+  test('有流水账户只归档，列表不再显示', () async {
+    final id = await accounts.createBankAccount(name: '有流水卡', openingBalance: 10000);
+    await transactions.addExpense(amount: 100, accountId: id, occurredAt: DateTime(2026, 6, 22));
+    final deleted = await accounts.deleteOrArchiveAccount(id);
+    expect(deleted, isFalse);
+    final archived = await accounts.findById(id);
+    expect(archived!.archived, isTrue);
+    final active = await accounts.listWithBalances();
+    expect(active.any((a) => a.account.id == id), isFalse);
+  });
+
   test('类别与设置读写', () async {
     await categories.create(name: '工资', type: 'income', icon: 'salary');
     final list = await categories.list('income');

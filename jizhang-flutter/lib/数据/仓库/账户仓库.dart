@@ -1,17 +1,102 @@
 import 'package:drift/drift.dart';
 
 import '../数据库.dart';
+
+class AccountWithBalance {
+  const AccountWithBalance({
+    required this.account,
+    required this.balance,
+    this.card,
+    this.loan,
+  });
+
+  final Account account;
+  final int balance;
+  final CardDetailRow? card;
+  final LoanDetailRow? loan;
+}
+
 class AccountRepository {
   AccountRepository(this.db);
 
   final AppDatabase db;
 
-  Future<List<Account>> listAccounts() {
-    return (db.select(db.accounts)..orderBy([(t) => OrderingTerm(expression: t.sortOrder)])).get();
+  Future<List<Account>> listAccounts({bool includeArchived = false}) {
+    final query = db.select(db.accounts)
+      ..orderBy([(t) => OrderingTerm(expression: t.sortOrder)]);
+    if (!includeArchived) {
+      query.where((t) => t.archived.equals(false));
+    }
+    return query.get();
+  }
+
+  Future<List<AccountWithBalance>> listWithBalances() async {
+    final accounts = await listAccounts();
+    final rows = await db.select(db.transactions).get();
+    final cards = await db.select(db.cardDetails).get();
+    final loans = await db.select(db.loanDetails).get();
+    final cardMap = {for (final c in cards) c.accountId: c};
+    final loanMap = {for (final l in loans) l.accountId: l};
+    return accounts.map((account) {
+      var balance = account.openingBalance;
+      for (final t in rows) {
+        if (t.type == 'income' && t.accountId == account.id) balance += t.amount;
+        if (t.type == 'expense' && t.accountId == account.id) balance -= t.amount;
+        if (t.type == 'transfer' && t.accountId == account.id) balance -= t.amount;
+        if (t.type == 'transfer' && t.toAccountId == account.id) balance += t.amount;
+      }
+      return AccountWithBalance(
+        account: account,
+        balance: balance,
+        card: cardMap[account.id],
+        loan: loanMap[account.id],
+      );
+    }).toList();
+  }
+
+  Future<CardDetailRow?> cardDetailOf(int id) {
+    return (db.select(db.cardDetails)..where((t) => t.accountId.equals(id))).getSingleOrNull();
+  }
+
+  Future<LoanDetailRow?> loanDetailOf(int id) {
+    return (db.select(db.loanDetails)..where((t) => t.accountId.equals(id))).getSingleOrNull();
+  }
+
+  Future<bool> hasTransactions(int id) async {
+    final rows = await (db.select(db.transactions)..where((t) => t.accountId.equals(id))).get();
+    return rows.isNotEmpty;
+  }
+
+  Future<void> archiveAccount(int id) {
+    return (db.update(db.accounts)..where((t) => t.id.equals(id))).write(
+      AccountsCompanion(
+        archived: const Value(true),
+        updatedAt: Value(DateTime.now().millisecondsSinceEpoch),
+      ),
+    );
+  }
+
+  Future<bool> deleteOrArchiveAccount(int id) async {
+    final has = await hasTransactions(id);
+    if (has) {
+      await archiveAccount(id);
+      return false;
+    }
+    await db.transaction(() async {
+      await (db.delete(db.cardDetails)..where((t) => t.accountId.equals(id))).go();
+      await (db.delete(db.loanDetails)..where((t) => t.accountId.equals(id))).go();
+      await (db.delete(db.accounts)..where((t) => t.id.equals(id))).go();
+    });
+    return true;
   }
 
   Future<Account?> findById(int id) {
     return (db.select(db.accounts)..where((t) => t.id.equals(id))).getSingleOrNull();
+  }
+
+  Future<bool> nameExists(String name, {int? excludeId}) async {
+    final rows = await (db.select(db.accounts)..where((t) => t.name.equals(name))).get();
+    return rows.any((row) => row.id != excludeId);
   }
 
   Future<int> createBankAccount({

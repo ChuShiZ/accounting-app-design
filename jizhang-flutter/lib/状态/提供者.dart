@@ -19,6 +19,14 @@ final accountRepositoryProvider = Provider<AccountRepository>((ref) {
   return AccountRepository(ref.watch(databaseProvider));
 });
 
+final accountsProvider = FutureProvider.autoDispose<List<AccountWithBalance>>((ref) {
+  return ref.watch(accountRepositoryProvider).listWithBalances();
+});
+
+final categoriesProvider = FutureProvider.autoDispose<List<CategoryRow>>((ref) {
+  return ref.watch(categoryRepositoryProvider).listAll();
+});
+
 final transactionRepositoryProvider = Provider<TransactionRepository>((ref) {
   return TransactionRepository(ref.watch(databaseProvider));
 });
