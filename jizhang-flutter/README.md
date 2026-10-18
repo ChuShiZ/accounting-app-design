@@ -1,7 +1,7 @@
 # jizhang · 记账（Flutter）
 
 > 自用离线安卓记账 App。主设计：`../doc/设计-账户资产模型.md`；视觉基准：`../DESIGN.md`。
-> 当前进度：**首页 / 记一笔 / 报表 / 资产 / 存单 / 信用卡 / 贷款 / 类别 / 设置主体完成**；WebDAV 与 Excel 导入仍按原型保留演示入口。
+> 当前进度：**首页 / 记一笔 / 报表 / 资产 / 存单 / 信用卡 / 贷款 / 类别 / 设置 / WebDAV 备份主体完成**；Excel 导入仍为原型入口。
 
 ## 环境
 
@@ -9,7 +9,7 @@
 - Android SDK 36.1.0；minSdk 26；targetSdk 36
 - applicationId：`com.self.jizhang`
 - 显示名：记账
-- 依赖：drift、riverpod、go_router、lucide_icons、image_picker
+- 依赖：drift、riverpod、go_router、lucide_icons、image_picker、archive、flutter_secure_storage
 
 > 工程顶层目录使用 ASCII `jizhang-flutter/`。Windows 下 Gradle/Flutter shader 编译器无法在包含非 ASCII 的工程路径构建；`lib/` 内部文件名仍按中文约定。
 
@@ -56,14 +56,25 @@
 
 - 类别管理：支出/收入切换、新增/编辑、名称/图标、已用笔数
 - 删除已用类别归入【其他】；固定类别不可删除/改名/改类型
-- 设置：默认记账账户（记一笔默认选中）、WebDAV 配置、连接校验、备份记录、恢复确认、自动备份开关
+- 设置：默认记账账户（记一笔默认选中）、WebDAV 配置、连接校验、备份恢复、自动备份开关与间隔
 - 我的：设置、类别管理、Excel 导入/帮助入口
+
+### WebDAV 备份
+
+- 坚果云等 WebDAV：真实 PROPFIND 连接校验、MKCOL 建目录、PUT 上传、GET 下载、DELETE 轮转
+- 默认目录 `记账备份`（如 `/dav/记账备份/`），不写 WebDAV 根目录
+- 备份 zip 包含 SQLite 数据库；图片凭证为可选项，**默认关闭**，开启后才打包 `receipts/`
+- 服务端仅保留最近 5 份；手动“立即备份”随时可用
+- 自动备份：启动、回到前台时检查；间隔可选 24 小时 / 3 天 / 7 天，默认 **3 天**；不做逐操作同步
+- 凭据：应用密码保存到系统安全存储；恢复先下载校验，重启 App 时替换数据库，并保留恢复前备份
+- 已用坚果云账号实测连接、建目录、上传、列表、下载、删除、恢复落盘
 
 ### 测试
 
 - `flutter analyze` 0 issue
-- `flutter test` 23/23（16 个仓库/业务测试 + 7 个 Widget 测试）
+- `flutter test` 24/24（17 个仓库/业务测试 + 7 个 Widget 测试）
 - 已用 x86_64 debug APK 在 MuMu Player 12（Android 12 / API 32）安装启动，手工验证：添加银行卡/储值卡/信用卡/存单、记账、流水编辑、充值、储值卡消费、信用卡还款、存单支取、报表、类别管理、设置页、图片选择入口
+- 坚果云实测：连接、`/记账备份/` 建目录、上传、列表、下载、删除、重启恢复；默认备份不含图片，开启后包含 `receipts/`
 - 尚未在 arm64 真机安装验证
 
 ## 命令
@@ -82,8 +93,7 @@ Debug APK：`build/app/outputs/flutter-apk/app-debug.apk`
 
 ## 已知 / 未接入
 
-- WebDAV 仅完成配置、校验、备份记录与恢复确认的交互原型；真实上传/下载/zip 打包与 Keystore 凭据存储未接入。
-- Excel 导入入口仍为原型提示，未接入 `.xlsx` 解析与账户映射。
+- WebDAV 已接真实坚果云备份；Excel 导入入口仍为原型提示，未接入 `.xlsx` 解析与账户映射。
 - 周期账单规则表已建，但尚无规则 UI。
 - 当前只创建 Android 平台；已在 MuMu 模拟器验证，未在真机验证。
 - `sqlite3_flutter_libs` 使用兼容 Flutter 3.38 的 0.5.x；drift 2.28（Dart 3.10 约束）。

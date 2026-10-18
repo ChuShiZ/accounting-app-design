@@ -10,6 +10,7 @@ import 'package:jizhang/数据/仓库/账户仓库.dart';
 import 'package:jizhang/数据/仓库/资产仓库.dart';
 import 'package:jizhang/数据/种子数据.dart';
 import 'package:jizhang/数据/首页数据.dart';
+import 'package:jizhang/同步/备份服务.dart';
 
 void main() {
   late AppDatabase db;
@@ -344,5 +345,17 @@ void main() {
     final home = await HomeRepository(db).snapshot(now: DateTime(2026, 10, 18));
     expect(home.dueItems.any((item) => item.kind == 'deposit'), isTrue);
     expect(home.dueItems.any((item) => item.kind == 'credit'), isTrue);
+  });
+
+  test('WebDAV 配置：备份目录不落根、图片默认不备份', () {
+    final config = WebDavConfig(
+      baseUrl: 'https://dav.jianguoyun.com/dav/',
+      username: 'user',
+      password: 'pass',
+    );
+    expect(config.folder, '记账备份');
+    expect(config.includeImages, isFalse);
+    expect(WebDavConfig(baseUrl: 'https://example.com/dav/', username: 'u', password: 'p', folder: '/').folder, '记账备份');
+    expect(WebDavConfig(baseUrl: 'https://example.com/dav/', username: 'u', password: 'p', folder: 'foo/bar').folderSegments, ['foo', 'bar']);
   });
 }
