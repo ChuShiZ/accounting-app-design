@@ -204,4 +204,4 @@ lib/
 
 ---
 
-**Flutter 主体完成（2026-10-18）：首页/记一笔/报表/资产/存单/信用卡/贷款/类别/设置/WebDAV/Excel 导入已实现；默认账户已加入。`flutter analyze` 0 issue、`flutter test` 26/26、x86_64 debug APK 构建并在 MuMu 验证；坚果云备份与 3800 行 Excel 导入已实测。arm64 真机待验证。**
+**Flutter 主体完成（2026-10-18）：首页/记一笔/报表/资产/存单/信用卡/贷款/类别/设置/WebDAV/Excel 导入/在线更新已实现；正式 release keystore 已生成。`flutter analyze` 0 issue、`flutter test` 26/26、x86_64 debug APK 构建并在 MuMu 验证；坚果云备份与 3800 行 Excel 导入已实测。正式 release 构建与 GitHub Actions 待推送 tag 验证；arm64 真机待验证。**

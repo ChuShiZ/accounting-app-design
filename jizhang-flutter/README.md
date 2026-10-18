@@ -57,6 +57,8 @@
 - 类别管理：支出/收入切换、新增/编辑、名称/图标、已用笔数
 - 删除已用类别归入【其他】；固定类别不可删除/改名/改类型
 - 设置：默认记账账户（记一笔默认选中）、WebDAV 配置、连接校验、备份恢复、自动备份开关与间隔
+- 在线更新：设置 → 检查更新；读取 GitHub Release 的 `latest.json`，打开发布页下载
+- 发布说明：`../doc/发布与在线更新.md`（正式 keystore 在仓库外，不提交）
 - 我的：设置、类别管理、Excel 导入/帮助入口
 
 ### WebDAV 备份
@@ -100,6 +102,8 @@ flutter build apk --debug --target-platform android-x64
 ```
 
 Debug APK：`build/app/outputs/flutter-apk/app-debug.apk`
+
+正式签名 keystore 在仓库外：`D:\project\accounting-app-design-secrets\jizhang-release.jks`。当前试用包 `jizhang-v1.0.0-universal-releasekey.apk` 已用正式 key 重签，后续 release 可直接覆盖；旧 debug 签名包需卸载一次。
 
 ## 已知 / 未接入
 

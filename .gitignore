@@ -5,3 +5,11 @@ dist/
 *.log
 
 jizhang-flutter/.tmp/
+
+jizhang-flutter/android/keystore.properties
+*.jks
+*.keystore
+
+jizhang-flutter/android/keystore.properties
+*.jks
+*.keystore

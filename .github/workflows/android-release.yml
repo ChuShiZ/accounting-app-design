@@ -1,0 +1,81 @@
+name: Android Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.38.8'
+          channel: stable
+          cache: true
+
+      - name: Configure signing
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/release.jks"
+          cat > android/keystore.properties <<EOF
+          storeFile=$RUNNER_TEMP/release.jks
+          storePassword=$STORE_PASSWORD
+          keyAlias=$KEY_ALIAS
+          keyPassword=$KEY_PASSWORD
+          EOF
+
+      - name: Build release APK
+        run: |
+          flutter pub get
+          flutter build apk --release
+
+      - name: Prepare update manifest
+        run: |
+          VERSION_LINE=$(grep '^version:' pubspec.yaml | head -n 1 | sed 's/version: *//')
+          VERSION_NAME=${VERSION_LINE%%+*}
+          VERSION_CODE=${VERSION_LINE##*+}
+          TAG=${GITHUB_REF_NAME}
+          if [ "v$VERSION_NAME" != "$TAG" ]; then
+            echo "Tag $TAG does not match pubspec version $VERSION_NAME" >&2
+            exit 1
+          fi
+          mkdir -p dist
+          ASSET="jizhang-${TAG}.apk"
+          cp build/app/outputs/flutter-apk/app-release.apk "dist/$ASSET"
+          SHA=$(sha256sum "dist/$ASSET" | awk '{print $1}')
+          cat > dist/latest.json <<EOF
+          {
+            "versionName": "$VERSION_NAME",
+            "versionCode": $VERSION_CODE,
+            "tag": "$TAG",
+            "apkUrl": "https://github.com/ChuShiZ/accounting-app-design/releases/download/$TAG/$ASSET",
+            "sha256": "$SHA",
+            "notes": "Release $TAG"
+          }
+          EOF
+          cat dist/latest.json
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.apk
+            dist/latest.json
+          generate_release_notes: true

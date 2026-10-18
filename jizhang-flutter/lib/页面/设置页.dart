@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../组件/页面骨架.dart';
 import '../数据/仓库/账户仓库.dart';
@@ -9,6 +11,7 @@ import '../状态/提供者.dart';
 import '../主题/令牌.dart';
 import '../同步/备份服务.dart';
 import '../同步/密钥存储.dart';
+import '../更新/更新服务.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
@@ -30,6 +33,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   bool _autoBackup = true;
   int _backupIntervalHours = 72;
   bool _includeImages = false;
+  bool _checkingUpdate = false;
+  String _currentVersion = '...';
   String _lastBackup = '暂无';
 
   @override
@@ -39,6 +44,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 
   Future<void> _load() async {
+    try {
+      final package = await PackageInfo.fromPlatform();
+      _currentVersion = '${package.version}+${package.buildNumber}';
+    } catch (_) {
+      _currentVersion = '1.0.0+1';
+    }
     final repo = ref.read(settingsRepositoryProvider);
     final defaultId = await repo.get('default_account_id');
     final url = await repo.get('webdav_url');
@@ -319,7 +330,23 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             context,
             child: Column(
               children: [
-                _aboutRow(context, '版本', '1.0.0 · Flutter'),
+                InkWell(
+                  onTap: _checkingUpdate ? null : _checkUpdate,
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(vertical: tokens.space2),
+                    child: Row(
+                      children: [
+                        Expanded(child: Text('检查更新', style: TextStyle(fontSize: 14, color: tokens.textPrimary))),
+                        if (_checkingUpdate)
+                          SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: tokens.primary))
+                        else
+                          Icon(LucideIcons.chevronRight, size: 18, color: tokens.textDisabled),
+                      ],
+                    ),
+                  ),
+                ),
+                Divider(height: 1, color: tokens.divider),
+                _aboutRow(context, '当前版本', _currentVersion),
                 _aboutRow(context, '数据存储', '本机 SQLite'),
                 _aboutRow(context, '备份格式', 'zip（db + 可选图片）'),
               ],
@@ -481,6 +508,44 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       );
     } catch (_) {
       return null;
+    }
+  }
+
+  Future<void> _checkUpdate() async {
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _checkingUpdate = true);
+    try {
+      final info = await AppUpdateService().check();
+      if (!mounted) return;
+      setState(() => _checkingUpdate = false);
+      if (info == null) {
+        messenger.showSnackBar(const SnackBar(content: Text('已是最新版本')));
+        return;
+      }
+      final open = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: Text('发现新版本 ${info.versionName}'),
+          content: Text(
+            '${info.notes.isEmpty ? '有新版本可用。' : info.notes}\n\n是否打开下载页？',
+            style: const TextStyle(height: 1.5),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(dialogContext).pop(false), child: const Text('稍后')),
+            FilledButton(onPressed: () => Navigator.of(dialogContext).pop(true), child: const Text('下载更新')),
+          ],
+        ),
+      );
+      if (open != true) return;
+      final uri = Uri.tryParse(info.apkUrl);
+      if (uri == null) throw StateError('更新地址无效');
+      if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+        throw StateError('无法打开浏览器');
+      }
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _checkingUpdate = false);
+      messenger.showSnackBar(SnackBar(content: Text('检查更新失败：$error')));
     }
   }
 
