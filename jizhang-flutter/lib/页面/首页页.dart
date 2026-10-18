@@ -85,12 +85,12 @@ class _HomePageState extends ConsumerState<HomePage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('今日支出', style: TextStyle(fontSize: 10, height: 1.2, color: tokens.textSecondary)),
+              Text('今日支出', style: TextStyle(fontSize: 11, height: 1.2, color: tokens.textSecondary)),
               SizedBox(height: 2),
               Text(
                 formatCents(data.todayExpense),
                 style: TextStyle(
-                  fontSize: 26,
+                  fontSize: 22,
                   height: 1.1,
                   fontWeight: FontWeight.w700,
                   color: tokens.textPrimary,
