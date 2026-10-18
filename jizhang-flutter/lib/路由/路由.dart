@@ -7,6 +7,7 @@ import '../页面/我的页.dart';
 import '../页面/类别管理页.dart';
 import '../页面/设置页.dart';
 import '../页面/Excel导入页.dart';
+import '../页面/存单页.dart';
 import '../组件/主壳.dart';
 
 GoRouter createAppRouter() {
@@ -31,6 +32,7 @@ GoRouter createAppRouter() {
       ],
     ),
     GoRoute(path: '/categories', builder: (context, state) => const CategoriesPage()),
+    GoRoute(path: '/deposits', builder: (context, state) => const DepositPage()),
     GoRoute(path: '/settings', builder: (context, state) => const SettingsPage()),
     GoRoute(path: '/import', builder: (context, state) => const ExcelImportPage()),
   ],

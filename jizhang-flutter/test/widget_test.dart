@@ -327,7 +327,7 @@ void main() {
     expect((await db.select(db.categories).get()).length, greaterThan(50));
   });
 
-  testWidgets('assets deposit overview and compact list render', (tester) async {
+  testWidgets('assets deposit entry opens dedicated deposit page', (tester) async {
     tester.view.physicalSize = const Size(1080, 1920);
     tester.view.devicePixelRatio = 3;
     addTearDown(tester.view.reset);
@@ -352,12 +352,16 @@ void main() {
     await tester.tap(find.text('资产').last);
     await tester.pumpAndSettle();
 
-    expect(find.text('存单本金'), findsOneWidget);
-    expect(find.text('预计利息'), findsOneWidget);
     expect(find.text('存续 1 张'), findsOneWidget);
+    expect(find.text('查看全部'), findsOneWidget);
+    await tester.tap(find.text('查看全部'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('存单资产'), findsOneWidget);
+    expect(find.text('预计利息'), findsOneWidget);
+    expect(find.text('最近到期'), findsOneWidget);
     expect(find.text('招商五万一年存'), findsOneWidget);
     expect(find.text('全部'), findsOneWidget);
     expect(find.text('即将到期'), findsOneWidget);
-    expect(find.text('添加存单'), findsOneWidget);
   });
 }
