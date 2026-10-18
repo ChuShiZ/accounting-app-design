@@ -23,6 +23,7 @@
 
       <record-sheet v-if="store.sheet==='记一笔'"/>
       <add-sheet v-if="store.sheet==='添加'"/>
+      <account-form-sheet v-if="store.sheet==='账户编辑'"/>
       <deposit-form-sheet v-if="store.sheet==='添加存单' || store.sheet==='编辑存单'"/>
       <deposit-detail-sheet v-if="store.sheet==='存单详情'"/>
       <deposit-settle-sheet v-if="store.sheet==='存单支取'"/>
@@ -76,6 +77,7 @@ import CategoriesPage from './components/CategoriesPage.vue'
 import SettingsPage from './components/SettingsPage.vue'
 import RecordSheet from './components/RecordSheet.vue'
 import AddSheet from './components/AddSheet.vue'
+import AccountFormSheet from './components/AccountFormSheet.vue'
 import DepositFormSheet from './components/DepositFormSheet.vue'
 import DepositDetailSheet from './components/DepositDetailSheet.vue'
 import DepositSettleSheet from './components/DepositSettleSheet.vue'

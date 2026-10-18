@@ -155,6 +155,8 @@ export const categories = reactive([
   { id:'c-education', name:'教育', type:'expense', icon:'education' },
   { id:'c-phone', name:'通讯', type:'expense', icon:'phone' },
   { id:'c-mortgage', name:'房贷', type:'expense', icon:'mortgage' },
+  { id:'c-car-loan', name:'车贷', type:'expense', icon:'car' },
+  { id:'c-loan', name:'贷款', type:'expense', icon:'loan' },
   { id:'c-recharge', name:'储值卡充值', type:'expense', icon:'card' },
   { id:'c-other', name:'其他', type:'expense', icon:'other' },
   { id:'c-salary', name:'工资', type:'income', icon:'salary' },
@@ -176,6 +178,7 @@ export const categoryIconChoices = [
   { key:'education', label:'教育' },
   { key:'phone', label:'通讯' },
   { key:'mortgage', label:'房贷' },
+  { key:'loan', label:'贷款' },
   { key:'card', label:'充值' },
   { key:'salary', label:'工资' },
   { key:'gift', label:'奖金' },
@@ -318,6 +321,74 @@ export function deleteTransaction(id){
 }
 
 /* ---------- 资产动作 ---------- */
+export function createBankAccount({ name, institution, balance, note }){
+  const account = {
+    id:'bank' + (++accSeq), type:'bank', name:name, institution:institution || '', icon:'bank',
+    balance:round2(balance || 0), note:note || ''
+  }
+  accounts.push(account)
+  return account
+}
+export function createStoredAccount({ name, institution, balance, defaultCategory, note }){
+  const account = {
+    id:'stored' + (++accSeq), type:'stored', name:name, institution:institution || '', icon:'cart',
+    balance:round2(balance || 0), defaultCategory:defaultCategory || '', note:note || ''
+  }
+  accounts.push(account)
+  return account
+}
+export function createLoanAccount(data){
+  const account = {
+    id:'loan' + (++accSeq), type:'loan', name:data.name, institution:data.institution || '',
+    icon:data.kind === 'car' ? 'car' : data.kind === 'mortgage' ? 'mortgage' : 'loan',
+    balance:-round2(data.remainingPrincipal || 0), note:data.note || '',
+    loan:{
+      kind:data.kind || 'mortgage',
+      originalPrincipal:round2(data.originalPrincipal || 0),
+      rateBp:Number(data.rateBp) || 0,
+      termMonths:Number(data.termMonths) || 0,
+      startAt:data.startAt || DEMO_TODAY,
+      nextDueAt:data.nextDueAt || DEMO_TODAY,
+      perAmount:round2(data.perAmount || 0),
+      repaymentMethod:data.repaymentMethod || 'equal_principal_interest',
+      note:data.note || ''
+    }
+  }
+  accounts.push(account)
+  return account
+}
+export function updateBankAccount(account, data){
+  if(!account) return
+  account.name = data.name
+  account.institution = data.institution || ''
+  account.note = data.note || ''
+}
+export function updateStoredAccount(account, data){
+  if(!account) return
+  account.name = data.name
+  account.institution = data.institution || ''
+  account.defaultCategory = data.defaultCategory || ''
+  account.note = data.note || ''
+}
+export function updateLoanAccount(account, data){
+  if(!account || !account.loan) return
+  account.name = data.name
+  account.institution = data.institution || ''
+  account.icon = data.kind === 'car' ? 'car' : data.kind === 'mortgage' ? 'mortgage' : 'loan'
+  account.balance = -round2(data.remainingPrincipal || 0)
+  Object.assign(account.loan, {
+    kind:data.kind || account.loan.kind,
+    originalPrincipal:round2(data.originalPrincipal || 0),
+    rateBp:Number(data.rateBp) || 0,
+    termMonths:Number(data.termMonths) || 0,
+    startAt:data.startAt || account.loan.startAt,
+    nextDueAt:data.nextDueAt || account.loan.nextDueAt,
+    perAmount:round2(data.perAmount || 0),
+    repaymentMethod:data.repaymentMethod || account.loan.repaymentMethod,
+    note:data.note || ''
+  })
+  account.note = data.note || ''
+}
 export function createDeposit({ bank, name, principal, rateBp, termMonths, startAt, certificateNo, note, sourceAccountId }){
   const p = round2(principal)
   if(p <= 0) return null
@@ -433,7 +504,8 @@ export function repayLoan(account, { amount, date, note }){
   if(bank) bank.balance = round2(bank.balance - amt)
   account.balance = round2(account.balance + amt)
   account.loan.nextDueAt = addMonths(account.loan.nextDueAt || DEMO_TODAY, 1)
-  addTransactionFactory({ type:'expense', amount:amt, category:'房贷', accountId:bank ? bank.id : 'bank1', loanId:account.id, date:date || DEMO_TODAY, note:account.name + '月供' + (note ? ' · ' + note : '') })
+  const category = account.loan.kind === 'car' ? '车贷' : (account.loan.kind === 'mortgage' ? '房贷' : '贷款')
+  addTransactionFactory({ type:'expense', amount:amt, category:category, accountId:bank ? bank.id : 'bank1', loanId:account.id, date:date || DEMO_TODAY, note:account.name + '月供' + (note ? ' · ' + note : '') })
   return true
 }
 
@@ -544,21 +616,20 @@ export function dueItems(){
         sub:s.key === 'matured' ? '已到期 · 待支取' : '还有 ' + Math.max(0, daysToMaturity(a)) + ' 天到期' })
     }
   })
-  const credit = accounts.find(a => a.type === 'credit' && a.balance < 0)
-  if(credit){
+  accounts.filter(a => a.type === 'credit' && a.balance < 0).forEach(credit => {
     const day = Number(credit.repaymentDay || 0)
     const days = day - 22
     if(day && days >= 0 && days <= 7){
       items.push({ kind:'credit', account:credit, days:days, title:credit.name, sub:days === 0 ? '今天还款日' : '还款日还有 ' + days + ' 天' })
     }
-  }
-  const loan = accounts.find(a => a.type === 'loan')
-  if(loan && loan.loan){
+  })
+  accounts.filter(a => a.type === 'loan').forEach(loan => {
+    if(!loan.loan) return
     const days = daysBetween(DEMO_TODAY, loan.loan.nextDueAt)
     if(days >= 0 && days <= 7){
       items.push({ kind:'loan', account:loan, days:days, title:loan.name, sub:'下次还款 ' + shortDate(loan.loan.nextDueAt) })
     }
-  }
+  })
   return items.sort((a, b) => a.days - b.days).slice(0, 3)
 }
 
@@ -577,7 +648,9 @@ export const store = reactive({
   categoryType: 'expense',
   settleMode: 'maturity',
   addSourceAccountId: 'bank1',
-  txEditId: null
+  txEditId: null,
+  accountFormType: 'bank',
+  accountEditId: null
 })
 let __toastTimer = null
 export function showToast(msg){
@@ -600,6 +673,11 @@ export function closeConfirm(){ confirmState.show = false; confirmState.onOk = n
 
 export function openSheet(name){ store.sheet = name }
 export function openRecord(txId){ store.txEditId = txId || null; store.sheet = '记一笔' }
+export function openAccountForm(type, accountId){
+  store.accountFormType = type || 'bank'
+  store.accountEditId = accountId || null
+  store.sheet = '账户编辑'
+}
 export function closeSheet(){ store.sheet = null }
 export function showScreen(name){ store.tab = name }
 export function switchTab(name){ store.tabBar = name; store.tab = name }

@@ -21,7 +21,8 @@
         </div>
       </div>
 
-      <div class="action-grid action-grid--single" v-if="a.type==='stored' || a.type==='credit'">
+      <div class="action-grid" :class="{'action-grid--single': a.type==='bank' || a.type==='ewallet' || a.type==='credit'}" v-if="['bank','ewallet','stored','credit'].includes(a.type)">
+        <button v-if="a.type==='bank' || a.type==='ewallet' || a.type==='stored'" class="btn btn-ghost" @click="editAccount">编辑</button>
         <button v-if="a.type==='stored'" class="btn btn-primary" @click="openSheet('充值')">充值</button>
         <button v-if="a.type==='credit'" class="btn btn-primary" @click="openSheet('信用卡还款')">还款</button>
       </div>
@@ -45,7 +46,7 @@
 </template>
 
 <script>
-import { store, accountById, transactions, icon, fmt, fmtSigned, typeLabel, openSheet, openRecord, closeSheet, iconForCategory, colorForCategory } from '../store.js'
+import { store, accountById, transactions, icon, fmt, fmtSigned, typeLabel, openSheet, openRecord, openAccountForm, closeSheet, iconForCategory, colorForCategory } from '../store.js'
 
 export default {
   name: 'CardDetailSheet',
@@ -55,7 +56,8 @@ export default {
     list(){ return this.a ? transactions.filter(t => t.accountId === this.a.id).slice(0, 6) : [] }
   },
   methods: {
-    editFlow(t){ openRecord(t.id) }
+    editFlow(t){ openRecord(t.id) },
+    editAccount(){ openAccountForm(this.a.type, this.a.id) }
   }
 }
 </script>

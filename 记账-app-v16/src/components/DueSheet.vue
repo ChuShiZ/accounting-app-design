@@ -11,7 +11,7 @@
       </div>
       <div v-else class="menu">
         <div class="item" v-for="d in list" :key="d.kind+d.account.id" @click="openItem(d)">
-          <span class="mi" :style="{color:iconColor(d.kind==='deposit'?'deposit':(d.kind==='credit'?'credit':'mortgage'))}" v-html="icon(d.kind==='deposit'?'deposit':(d.kind==='credit'?'credit':'mortgage'),24)"></span>
+          <span class="mi" :style="{color:iconColor(d.kind==='deposit'?'deposit':(d.kind==='credit'?'credit':d.account.icon))}" v-html="icon(d.kind==='deposit'?'deposit':(d.kind==='credit'?'credit':d.account.icon),24)"></span>
           <div class="flow-main">
             <div class="mt">{{d.title}}</div>
             <div class="caption" style="color:var(--color-text-secondary);margin-top:2px">{{d.sub}}</div>

@@ -32,7 +32,7 @@
 </template>
 
 <script>
-import { store, categories, categoryIconChoices, transactions, icon, iconColor, closeSheet, showToast, askConfirm } from '../store.js'
+import { store, categories, categoryIconChoices, transactions, accounts, icon, iconColor, closeSheet, showToast, askConfirm } from '../store.js'
 
 export default {
   name: 'CategorySheet',
@@ -69,6 +69,14 @@ export default {
           transactions.forEach(t => {
             if(t.category === oldName && t.type === txType) t.category = name
           })
+          accounts.forEach(a => {
+            if(a.defaultCategory === oldName) a.defaultCategory = name
+          })
+        }
+        if(oldType !== this.type){
+          accounts.forEach(a => {
+            if(a.defaultCategory === name) a.defaultCategory = ''
+          })
         }
         closeSheet(); showToast('类别已更新')
       } else {
@@ -82,6 +90,9 @@ export default {
       askConfirm('删除类别「' + cat.name + '」？已有流水会保留原类别名。', function(){
         const i = categories.indexOf(cat)
         if(i >= 0) categories.splice(i, 1)
+        accounts.forEach(a => {
+          if(a.defaultCategory === cat.name) a.defaultCategory = ''
+        })
         closeSheet(); showToast('类别已删除')
       }, { title:'删除类别', confirmText:'删除' })
     }

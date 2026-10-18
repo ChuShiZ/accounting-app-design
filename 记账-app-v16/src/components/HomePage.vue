@@ -111,7 +111,7 @@ export default {
     categoryIcon(c, type){ return iconForCategory(c, type) },
     amountCls(t){
       if(t.type === 'income') return 'income'
-      if(t.category === '房贷' || t.category === '车贷') return 'liability'
+      if(t.category === '房贷' || t.category === '车贷' || t.category === '贷款') return 'liability'
       return 'expense'
     }
   }

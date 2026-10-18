@@ -136,7 +136,13 @@ export default {
       if(this.amount === '' || this.amount === '.') { this.amount = ''; return }
       this.amount = (Math.round((parseFloat(this.amount) || 0) * 100) / 100).toFixed(2)
     },
-    selectAcc(id){ this.accId = id },
+    selectAcc(id){
+      this.accId = id
+      const a = accountById(id)
+      if(this.type === 'expense' && a && a.type === 'stored' && a.defaultCategory){
+        this.cat = a.defaultCategory
+      }
+    },
     save(){
       const num = parseFloat(this.amount) || 0
       if(num <= 0){ showToast('请输入金额'); return }

@@ -21,7 +21,8 @@
         </div>
       </div>
 
-      <div class="action-grid action-grid--single">
+      <div class="action-grid">
+        <button class="btn btn-ghost" @click="editAccount">编辑</button>
         <button class="btn btn-primary" @click="openSheet('贷款还款')">还款</button>
       </div>
       <div class="caption" style="color:var(--color-text-secondary);margin-top:var(--space-2)">月供整笔计入支出；界面不拆本金/利息。</div>
@@ -30,7 +31,7 @@
       <div v-if="!list.length" class="caption" style="color:var(--color-text-secondary)">暂无还款记录</div>
       <div v-else class="group-card">
         <div class="flow-item" v-for="t in list" :key="t.id" @click="editFlow(t)">
-          <div class="badge" :style="{color:iconColor('mortgage')}" v-html="icon('mortgage',24)"></div>
+          <div class="badge" :style="{color:iconColor(a.icon)}" v-html="icon(a.icon,24)"></div>
           <div class="flow-main">
             <div class="cat">{{a.name}}月供</div>
             <div class="sub">{{t.date}} · {{t.note || '还款'}}</div>
@@ -43,7 +44,7 @@
 </template>
 
 <script>
-import { store, accountById, transactions, icon, iconColor, fmt, fmtRate, openSheet, openRecord, closeSheet } from '../store.js'
+import { store, accountById, transactions, icon, iconColor, fmt, fmtRate, openSheet, openRecord, openAccountForm, closeSheet } from '../store.js'
 
 export default {
   name: 'LoanDetailSheet',
@@ -57,11 +58,12 @@ export default {
     },
     list(){
       if(!this.a) return []
-      return transactions.filter(t => t.category === '房贷' || t.category === '车贷').slice(0, 5)
+      return transactions.filter(t => t.loanId === this.a.id).slice(0, 5)
     }
   },
   methods: {
-    editFlow(t){ openRecord(t.id) }
+    editFlow(t){ openRecord(t.id) },
+    editAccount(){ openAccountForm('loan', this.a.id) }
   }
 }
 </script>
