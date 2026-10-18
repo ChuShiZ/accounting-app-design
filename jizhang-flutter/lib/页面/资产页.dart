@@ -368,32 +368,40 @@ class _AccountTile extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    view.account.name,
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: tokens.textPrimary),
-                    overflow: TextOverflow.ellipsis,
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          view.account.name,
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: tokens.textPrimary),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (!isDefault) ...[
+                        SizedBox(width: tokens.space2),
+                        Text(
+                          formatCents(isLiability ? view.balance.abs() : view.balance),
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: isLiability ? tokens.liability : tokens.textPrimary,
+                            fontFeatures: const [FontFeature.tabularFigures()],
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                   SizedBox(height: 2),
                   Text(
                     accountSubtitle(view, categoryNames: categoryNames),
-                    style: TextStyle(fontSize: 12, color: tokens.textSecondary),
+                    style: TextStyle(fontSize: 12, height: 1.3, color: tokens.textSecondary),
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
             ),
-            if (!isDefault) ...[
-              SizedBox(width: tokens.space2),
-              Text(
-                formatCents(isLiability ? view.balance.abs() : view.balance),
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: isLiability ? tokens.liability : tokens.textPrimary,
-                  fontFeatures: const [FontFeature.tabularFigures()],
-                ),
-              ),
-            ],
             SizedBox(width: tokens.space1),
             Icon(LucideIcons.chevronRight, size: 18, color: tokens.textDisabled),
           ],

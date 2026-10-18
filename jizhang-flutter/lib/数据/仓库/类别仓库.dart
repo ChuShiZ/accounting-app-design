@@ -39,6 +39,12 @@ class CategoryRepository {
     );
   }
 
+  Future<void> setFixed(int id, bool fixed) {
+    return (db.update(db.categories)..where((t) => t.id.equals(id))).write(
+      CategoriesCompanion(isFixed: Value(fixed)),
+    );
+  }
+
   Future<CategoryRow?> findByName(String name, String type) {
     return (db.select(db.categories)
           ..where((t) => t.name.equals(name) & t.type.equals(type)))

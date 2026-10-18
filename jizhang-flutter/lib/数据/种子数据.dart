@@ -10,12 +10,11 @@ class _PresetChild {
 }
 
 class _PresetGroup {
-  const _PresetGroup(this.name, this.icon, {this.children = const [], this.fixed = false});
+  const _PresetGroup(this.name, this.icon, {this.children = const []});
 
   final String name;
   final String icon;
   final List<_PresetChild> children;
-  final bool fixed;
 }
 
 const _expensePresets = <_PresetGroup>[
@@ -132,7 +131,7 @@ const _expensePresets = <_PresetGroup>[
     _PresetChild('其他宠物', 'pet'),
   ]),
   _PresetGroup('储值卡充值', 'card'),
-  _PresetGroup('其他', 'other', fixed: true),
+  _PresetGroup('其他', 'other'),
 ];
 
 const _incomePresets = <_PresetGroup>[
@@ -172,7 +171,7 @@ const _incomePresets = <_PresetGroup>[
     _PresetChild('中奖', 'bonus'),
     _PresetChild('意外收入', 'cash'),
   ]),
-  _PresetGroup('其他', 'other', fixed: true),
+  _PresetGroup('其他', 'other'),
 ];
 
 /// 首次打开数据库时写入预设类别；已有类别时补齐两级预设，不覆盖用户已有名称。
@@ -180,12 +179,12 @@ Future<void> seedPresetData(AppDatabase db) async {
   const markerKey = 'category_tree_version';
   final marker = await (db.select(db.settings)..where((t) => t.key.equals(markerKey))).getSingleOrNull();
   final version = int.tryParse(marker?.value ?? '') ?? 0;
-  if (version < 2) {
+  if (version < 3) {
     final categories = CategoryRepository(db);
     await _ensurePresets(categories, 'expense', _expensePresets);
     await _ensurePresets(categories, 'income', _incomePresets);
     await db.into(db.settings).insertOnConflictUpdate(
-          SettingsCompanion.insert(key: markerKey, value: '2'),
+          SettingsCompanion.insert(key: markerKey, value: '3'),
         );
   }
   await AccountRepository(db).ensureDefaultAccount();
@@ -204,11 +203,16 @@ Future<void> _ensurePresets(
         type: type,
         icon: preset.icon,
         isPreset: true,
-        isFixed: preset.fixed,
+        isFixed: true,
       );
       group = await repository.findById(id);
-    } else if (group.parentId != null) {
-      await repository.setParent(group.id, null);
+    } else {
+      if (group.parentId != null) {
+        await repository.setParent(group.id, null);
+      }
+      if (group.isPreset && !group.isFixed) {
+        await repository.setFixed(group.id, true);
+      }
     }
     if (group == null) continue;
 
@@ -221,13 +225,19 @@ Future<void> _ensurePresets(
           icon: child.icon,
           parentId: group.id,
           isPreset: true,
+          isFixed: true,
         );
-      } else if (existing.id != group.id && existing.parentId == null) {
-        // 旧版本预设是一级分类：这里迁移到对应的一级分类下面。
-        // 用户自建且已经有子分类的分类保持原样，避免出现三级结构。
-        final hasChildren = await repository.hasChildren(existing.id);
-        if (!hasChildren) {
-          await repository.setParent(existing.id, group.id);
+      } else {
+        if (existing.id != group.id && existing.parentId == null) {
+          // 旧版本预设是一级分类：这里迁移到对应的一级分类下面。
+          // 用户自建且已经有子分类的分类保持原样，避免出现三级结构。
+          final hasChildren = await repository.hasChildren(existing.id);
+          if (!hasChildren) {
+            await repository.setParent(existing.id, group.id);
+          }
+        }
+        if (existing.isPreset && !existing.isFixed) {
+          await repository.setFixed(existing.id, true);
         }
       }
     }

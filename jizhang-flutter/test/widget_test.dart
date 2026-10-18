@@ -225,7 +225,9 @@ void main() {
     final interest = categories.firstWhere((c) => c.name == '利息' && c.type == 'income');
     final other = categories.firstWhere((c) => c.name == '其他' && c.type == 'expense');
     expect(food.parentId, isNull);
+    expect(food.isFixed, isTrue);
     expect(lunch.parentId, food.id);
+    expect(lunch.isFixed, isTrue);
     expect(invest.parentId, isNull);
     expect(interest.parentId, invest.id);
     expect(other.parentId, isNull);

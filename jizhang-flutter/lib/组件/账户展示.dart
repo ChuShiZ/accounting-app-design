@@ -156,7 +156,7 @@ String accountSubtitle(AccountWithBalance view, {Map<int, String> categoryNames 
       final loan = view.loan;
       if (loan == null) return '贷款';
       final due = DateTime.fromMillisecondsSinceEpoch(loan.nextDueAt);
-      return '剩余本金 · 下次 ${formatDate(due)}';
+      return '下次还款 ${formatDate(due)}';
     default:
       return account.institution?.isNotEmpty == true ? account.institution! : accountTypeLabel(account.type);
   }

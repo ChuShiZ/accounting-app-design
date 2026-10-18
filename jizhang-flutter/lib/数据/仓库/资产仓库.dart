@@ -222,7 +222,7 @@ class AssetRepository {
     }
     final total = rows.fold<int>(0, (sum, transaction) => sum + transaction.amount);
     final categoryName = loan.kind == 'car' ? '车贷' : (loan.kind == 'mortgage' ? '房贷' : '贷款');
-    final categoryId = await _categoryId(categoryName, 'expense');
+    final categoryId = await _categoryId(categoryName, 'expense') ?? await _categoryId('金融', 'expense');
     final now = DateTime.now().millisecondsSinceEpoch;
     await db.transaction(() async {
       for (final transaction in rows) {

@@ -211,7 +211,7 @@ class _GroupTile extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(color: tokens.surface2, borderRadius: BorderRadius.circular(4)),
-                    child: Text('固定', style: TextStyle(fontSize: 10, color: tokens.textSecondary)),
+                    child: Text('默认', style: TextStyle(fontSize: 10, color: tokens.textSecondary)),
                   ),
                 if (onAddChild != null)
                   IconButton(

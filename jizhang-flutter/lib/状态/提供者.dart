@@ -70,7 +70,28 @@ final transactionRepositoryProvider = Provider<TransactionRepository>((ref) {
 
 final accountTransactionsProvider =
     FutureProvider.autoDispose.family<List<TransactionRow>, int>((ref, accountId) async {
-  final rows = await ref.watch(transactionRepositoryProvider).listRecent(limit: 500);
+  final account = await ref.watch(accountRepositoryProvider).findById(accountId);
+  final rows = await ref.watch(transactionRepositoryProvider).listRecent(limit: 5000);
+  if (account?.type == 'loan') {
+    final loanGroups = <String>{};
+    for (final row in rows) {
+      if (row.type == 'income' &&
+          row.accountId == accountId &&
+          row.groupKind == 'loan_payment' &&
+          row.groupId != null) {
+        loanGroups.add(row.groupId!);
+      }
+    }
+    final linked = rows
+        .where((t) =>
+            t.type == 'expense' &&
+            t.groupKind == 'loan_payment' &&
+            t.groupId != null &&
+            loanGroups.contains(t.groupId))
+        .toList()
+      ..sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
+    return linked.take(12).toList();
+  }
   return rows
       .where((t) => t.accountId == accountId || t.toAccountId == accountId)
       .take(12)

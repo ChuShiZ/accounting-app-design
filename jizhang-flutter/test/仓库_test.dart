@@ -558,7 +558,7 @@ void main() {
     expect(categoryRows.length, greaterThan(50));
     expect(await settings.get('webdav_url'), 'https://example.com/dav/');
     expect(await settings.get('default_account_id'), isNull);
-    expect(await settings.get('category_tree_version'), '2');
+    expect(await settings.get('category_tree_version'), '3');
   });
 
   test('关联历史还款：保持剩余本金不变并生成内部回补', () async {

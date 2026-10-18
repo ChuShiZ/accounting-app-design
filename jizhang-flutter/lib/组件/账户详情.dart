@@ -360,11 +360,12 @@ class _AccountDetailSheet extends ConsumerWidget {
       padding: EdgeInsets.symmetric(vertical: tokens.space3),
       decoration: BoxDecoration(border: Border(bottom: BorderSide(color: tokens.divider))),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: TextStyle(fontSize: 14, color: tokens.textSecondary)),
-          const Spacer(),
-          Flexible(
-            child: Text(value, textAlign: TextAlign.right, style: TextStyle(fontSize: 14, color: tokens.textPrimary)),
+          SizedBox(width: 92, child: Text(label, style: TextStyle(fontSize: 14, color: tokens.textSecondary))),
+          SizedBox(width: tokens.space3),
+          Expanded(
+            child: Text(value, style: TextStyle(fontSize: 14, color: tokens.textPrimary)),
           ),
         ],
       ),

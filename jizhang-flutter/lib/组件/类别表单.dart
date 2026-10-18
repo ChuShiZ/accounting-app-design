@@ -158,11 +158,16 @@ class _CategoryFormSheetState extends ConsumerState<CategoryFormSheet> {
     final tokens = context.tokens;
     final all = _allCategories;
     final parentOptions = all
-        .where((item) => item.type == _type && item.parentId == null && !item.isFixed && item.id != widget.category?.id)
+        .where((item) =>
+            item.type == _type &&
+            item.parentId == null &&
+            (!item.isFixed || item.id == widget.category?.parentId) &&
+            item.id != widget.category?.id)
         .toList();
     final parentChoice = parentOptions.any((item) => item.id == _parentChoice) ? _parentChoice : 0;
     final parent = parentChoice == 0 ? null : parentOptions.firstWhere((item) => item.id == parentChoice);
-    final lockedParent = _hasChildren || widget.category?.isFixed == true;
+    final locked = widget.category?.isFixed == true;
+    final lockedParent = _hasChildren || locked;
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
 
     return Padding(
@@ -180,7 +185,7 @@ class _CategoryFormSheetState extends ConsumerState<CategoryFormSheet> {
                 children: [
                   Expanded(
                     child: Text(
-                      _editing ? '编辑类别' : '新增类别',
+                      _editing ? (locked ? '默认类别' : '编辑类别') : '新增类别',
                       style: TextStyle(fontSize: 18, height: 1.2, fontWeight: FontWeight.w600, color: tokens.textPrimary),
                     ),
                   ),
@@ -221,14 +226,14 @@ class _CategoryFormSheetState extends ConsumerState<CategoryFormSheet> {
                   _label(context, '名称'),
                   TextField(
                     controller: _name,
-                    readOnly: widget.category?.isFixed == true,
+                    readOnly: locked,
                     maxLength: 20,
-                    decoration: _decoration(context, widget.category?.isFixed == true ? '固定类别' : '如：咖啡、宠物、房租'),
+                    decoration: _decoration(context, locked ? '默认类别' : '如：咖啡、宠物、房租'),
                   ),
                   _label(context, '上级分类'),
                   DropdownButtonFormField<int>(
                     key: ValueKey('parent-$_type-$parentChoice-${parentOptions.length}-${lockedParent ? 1 : 0}'),
-                    initialValue: lockedParent ? 0 : parentChoice,
+                    initialValue: parentChoice,
                     isExpanded: true,
                     decoration: _decoration(context, ''),
                     icon: Icon(LucideIcons.chevronDown, color: tokens.textDisabled),
@@ -255,7 +260,9 @@ class _CategoryFormSheetState extends ConsumerState<CategoryFormSheet> {
                     padding: EdgeInsets.only(top: 4),
                     child: Text(
                       widget.category?.isFixed == true
-                          ? '固定类别保持为一级分类。'
+                          ? (parent == null
+                              ? '默认分类不可修改，保持为一级分类。'
+                              : '默认分类不可修改，保持属于「${parent.name}」。')
                           : (lockedParent
                               ? '一级分类下已有子分类，不能移动。'
                               : (parent == null
@@ -265,7 +272,7 @@ class _CategoryFormSheetState extends ConsumerState<CategoryFormSheet> {
                     ),
                   ),
                   _label(context, '图标'),
-                  Text('挑选一个图标，图标颜色固定，无需底色。', style: TextStyle(fontSize: 11, color: tokens.textSecondary)),
+                  Text(locked ? '默认分类不可修改图标。' : '挑选一个图标，图标颜色固定，无需底色。', style: TextStyle(fontSize: 11, color: tokens.textSecondary)),
                   SizedBox(height: tokens.space2),
                   Container(
                     padding: const EdgeInsets.all(4),
@@ -285,7 +292,7 @@ class _CategoryFormSheetState extends ConsumerState<CategoryFormSheet> {
                         final item = categoryIconChoices[index];
                         final selected = item.$1 == _icon;
                         return InkWell(
-                          onTap: () => setState(() => _icon = item.$1),
+                          onTap: locked ? null : () => setState(() => _icon = item.$1),
                           borderRadius: BorderRadius.circular(tokens.radiusMd),
                           child: Container(
                             decoration: BoxDecoration(
@@ -343,7 +350,10 @@ class _CategoryFormSheetState extends ConsumerState<CategoryFormSheet> {
                   ),
                   SizedBox(width: tokens.space3),
                   Expanded(
-                    child: FilledButton(onPressed: _save, child: const Text('保存')),
+                    child: FilledButton(
+                      onPressed: widget.category?.isFixed == true ? () => Navigator.of(context).pop() : _save,
+                      child: Text(widget.category?.isFixed == true ? '完成' : '保存'),
+                    ),
                   ),
                 ],
               ),
@@ -360,6 +370,10 @@ class _CategoryFormSheetState extends ConsumerState<CategoryFormSheet> {
     return Expanded(
       child: GestureDetector(
         onTap: () {
+          if (widget.category?.isFixed == true) {
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('默认分类不可修改')));
+            return;
+          }
           if (_editing && _usage > 0) {
             ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('已有流水的类别不能修改收支类型')));
             return;
@@ -425,10 +439,14 @@ class _CategoryFormSheetState extends ConsumerState<CategoryFormSheet> {
     final all = ref.read(categoriesProvider).valueOrNull ?? const <CategoryRow>[];
     final hasChildren = widget.category != null && all.any((item) => item.parentId == widget.category!.id);
     final parentOptions = all
-        .where((item) => item.type == type && item.parentId == null && !item.isFixed && item.id != widget.category?.id)
+        .where((item) =>
+            item.type == type &&
+            item.parentId == null &&
+            (!item.isFixed || item.id == widget.category?.parentId) &&
+            item.id != widget.category?.id)
         .toList();
     final parentChoice = parentOptions.any((item) => item.id == _parentChoice) ? _parentChoice : 0;
-    final parentId = fixed || hasChildren || parentChoice == 0 ? null : parentChoice;
+    final parentId = fixed ? widget.category?.parentId : (hasChildren || parentChoice == 0 ? null : parentChoice);
     if (parentId != null) {
       final parent = parentOptions.firstWhere((item) => item.id == parentId);
       if (parent.parentId != null) {
