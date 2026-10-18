@@ -11,6 +11,9 @@ import 'package:jizhang/数据/仓库/资产仓库.dart';
 import 'package:jizhang/数据/种子数据.dart';
 import 'package:jizhang/数据/首页数据.dart';
 import 'package:jizhang/同步/备份服务.dart';
+import 'package:jizhang/导入/excel分类映射.dart';
+import 'package:jizhang/导入/excel导入服务.dart';
+import 'package:jizhang/导入/excel解析.dart';
 
 void main() {
   late AppDatabase db;
@@ -376,5 +379,96 @@ void main() {
       accounts.deleteOrArchiveAccount(defaultView.account.id),
       throwsStateError,
     );
+  });
+
+  test('Excel 分类映射到现有两级分类', () {
+    expect(ExcelCategoryMapper.targetName('expense', '早午晚餐'), '餐饮');
+    expect(ExcelCategoryMapper.targetName('expense', '加油充电'), '加油');
+    expect(ExcelCategoryMapper.targetName('expense', '停车费'), '停车');
+    expect(ExcelCategoryMapper.targetName('expense', '高速'), '过路费');
+    expect(ExcelCategoryMapper.targetName('expense', '水果零食', note: '榴莲'), '水果');
+    expect(ExcelCategoryMapper.targetName('expense', '水果零食', note: '好想来零食乐园'), '零食');
+    expect(ExcelCategoryMapper.targetName('expense', '火车飞机', note: '济南到徐州'), '火车高铁');
+    expect(ExcelCategoryMapper.targetName('expense', '火车飞机', note: '航班'), '飞机');
+    expect(ExcelCategoryMapper.targetName('income', '住房'), '补贴');
+    expect(ExcelCategoryMapper.targetName('income', '其他', note: '退款68.50元'), '退款');
+    expect(ExcelCategoryMapper.targetName('income', '礼金'), '礼金');
+    expect(ExcelCategoryMapper.targetName('expense', '消费'), '其他');
+    expect(ExcelCategoryMapper.targetName('expense', '完全未知'), isNull);
+  });
+
+  test('Excel 文件中的来源分类都能落到预设分类', () async {
+    const expenseSources = [
+      '餐饮', '早午晚餐', '购物', '消费', '交通', '加油充电', '公交地铁', '车', '住房',
+      '医疗', '婚礼筹备', '通讯', '水电燃气', '转账', '停车费', '水果零食', '咖啡奶茶',
+      '其他', '水电费', '高速', '打车租车', '红包', '房贷车贷', '娱乐', '穿搭美妆',
+      '生活日用', '火车飞机', '美容', '教育', '房租物业', '共享单车', '保养修车',
+      '烹饪食材', '旅行', '烟酒茶叶', '快递', '人情社交', '维修清洁', '旅行交通',
+      '保险', '酒店住宿', '手机数码', '慈善捐款', '培训考试', '美食特产', '借出',
+      '景点门票', '请客送礼',
+    ];
+    const incomeSources = ['礼金', '收转账', '收红包', '住房', '其他'];
+    final all = await db.select(db.categories).get();
+    final expenseNames = all.where((c) => c.type == 'expense').map((c) => c.name).toSet();
+    final incomeNames = all.where((c) => c.type == 'income').map((c) => c.name).toSet();
+    for (final source in expenseSources) {
+      final target = ExcelCategoryMapper.targetName('expense', source, note: '');
+      expect(target, isNotNull, reason: '支出分类未映射：$source');
+      expect(expenseNames, contains(target), reason: '支出目标分类不存在：$source -> $target');
+    }
+    for (final source in incomeSources) {
+      final target = ExcelCategoryMapper.targetName('income', source, note: '');
+      expect(target, isNotNull, reason: '收入分类未映射：$source');
+      expect(incomeNames, contains(target), reason: '收入目标分类不存在：$source -> $target');
+    }
+  });
+
+  test('Excel 导入使用映射分类且不重复建类', () async {
+    final bank = await accounts.createBankAccount(name: '导入卡', openingBalance: 0);
+    final before = await db.select(db.categories).get();
+    final result = await ExcelImportService(db).importRows(
+      accountId: bank,
+      rows: [
+        ExcelParsedRow(
+          rowNumber: 2,
+          occurredAt: DateTime(2026, 10, 18, 8),
+          type: 'expense',
+          category: '早午晚餐',
+          note: '家常菜',
+          amount: 1600,
+        ),
+        ExcelParsedRow(
+          rowNumber: 3,
+          occurredAt: DateTime(2026, 10, 18, 9),
+          type: 'expense',
+          category: '加油充电',
+          note: '中国石化',
+          amount: 20000,
+        ),
+        ExcelParsedRow(
+          rowNumber: 4,
+          occurredAt: DateTime(2026, 10, 18, 10),
+          type: 'expense',
+          category: '水果零食',
+          note: '榴莲',
+          amount: 3000,
+        ),
+        ExcelParsedRow(
+          rowNumber: 5,
+          occurredAt: DateTime(2026, 10, 18, 11),
+          type: 'income',
+          category: '礼金',
+          note: '转账-已收款',
+          amount: 10000,
+        ),
+      ],
+    );
+    expect(result.success, 4);
+    expect(result.categoriesCreated, 0);
+    final after = await db.select(db.categories).get();
+    expect(after.length, before.length);
+    final names = {for (final category in after) category.id: category.name};
+    final rows = await db.select(db.transactions).get();
+    expect(rows.map((row) => names[row.categoryId]).toSet(), {'餐饮', '加油', '水果', '礼金'});
   });
 }

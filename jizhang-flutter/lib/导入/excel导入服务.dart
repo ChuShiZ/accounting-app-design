@@ -2,6 +2,7 @@ import '../数据/数据库.dart';
 import '../数据/仓库/账户仓库.dart';
 import '../数据/仓库/类别仓库.dart';
 import '../数据/仓库/交易仓库.dart';
+import 'excel分类映射.dart';
 import 'excel解析.dart';
 
 class ExcelImportResult {
@@ -46,11 +47,20 @@ class ExcelImportService {
       for (final category in existingCategories) '${category.type}|${category.name}': category.id,
     };
     var categoriesCreated = 0;
+
+    String targetNameFor(ExcelParsedRow row) {
+      final mapped = ExcelCategoryMapper.targetName(row.type, row.category, note: row.note);
+      if (mapped == null) return row.category;
+      // 预设目标分类被用户删掉时回退到【其他】，不重建一个错位的一级分类。
+      return categoryMap.containsKey('${row.type}|$mapped') ? mapped : '其他';
+    }
+
     final needed = <String, ({String type, String name})>{};
     for (final row in rows) {
-      final key = '${row.type}|${row.category}';
+      final targetName = targetNameFor(row);
+      final key = '${row.type}|$targetName';
       if (categoryMap.containsKey(key)) continue;
-      needed.putIfAbsent(key, () => (type: row.type, name: row.category));
+      needed.putIfAbsent(key, () => (type: row.type, name: targetName));
     }
     for (final entry in needed.values) {
       final id = await categoryRepository.create(
@@ -82,7 +92,8 @@ class ExcelImportService {
     final toInsert = <({ExcelParsedRow row, int accountId, int categoryId})>[];
     for (final row in rows) {
       final targetAccountId = row.accountName == null ? accountId : (accountByName[row.accountName] ?? accountId);
-      final categoryId = categoryMap['${row.type}|${row.category}'];
+      final targetName = targetNameFor(row);
+      final categoryId = categoryMap['${row.type}|$targetName'];
       if (categoryId == null) {
         errors.add(ExcelRowError(row.rowNumber, '类别创建失败'));
         continue;

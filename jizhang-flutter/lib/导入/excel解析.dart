@@ -78,7 +78,9 @@ class ExcelParser {
 
     final dateColumn = _findColumn(header, dateAliases);
     final typeColumn = _findColumn(header, typeAliases);
-    final categoryColumn = _findColumn(header, categoryAliases);
+    final primaryCategoryColumn = _findColumn(header, ['记账分类']);
+    final fallbackCategoryColumn = _findColumn(header, ['分类筛选', '分类', '类别']);
+    final categoryColumn = primaryCategoryColumn >= 0 ? primaryCategoryColumn : fallbackCategoryColumn;
     final amountColumn = _findColumn(header, amountAliases);
     final noteColumn = _findColumn(header, noteAliases);
     final accountColumn = _findColumn(header, accountAliases);
@@ -107,7 +109,10 @@ class ExcelParser {
         errors.add(ExcelRowError(rowNumber, '金额无效'));
         continue;
       }
-      final category = (categoryColumn < 0 ? '' : _cellTextAt(row, categoryColumn)).trim();
+      var category = (categoryColumn < 0 ? '' : _cellTextAt(row, categoryColumn)).trim();
+      if (category.isEmpty && primaryCategoryColumn >= 0 && fallbackCategoryColumn >= 0) {
+        category = _cellTextAt(row, fallbackCategoryColumn).trim();
+      }
       final note = (noteColumn < 0 ? '' : _cellTextAt(row, noteColumn)).trim();
       final accountName = (accountColumn < 0 ? '' : _cellTextAt(row, accountColumn)).trim();
       parsed.add(ExcelParsedRow(
@@ -124,10 +129,11 @@ class ExcelParser {
   }
 
   static int _findColumn(List<String> headers, List<String> aliases) {
-    for (var i = 0; i < headers.length; i++) {
-      final normalized = headers[i].replaceAll(RegExp(r'\s+'), '').toLowerCase();
-      if (aliases.any((alias) => normalized == alias.replaceAll(RegExp(r'\s+'), '').toLowerCase())) {
-        return i;
+    for (final alias in aliases) {
+      final normalizedAlias = alias.replaceAll(RegExp(r'\s+'), '').toLowerCase();
+      for (var i = 0; i < headers.length; i++) {
+        final normalized = headers[i].replaceAll(RegExp(r'\s+'), '').toLowerCase();
+        if (normalized == normalizedAlias) return i;
       }
     }
     return -1;

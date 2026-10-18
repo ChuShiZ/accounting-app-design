@@ -97,6 +97,11 @@ class _ExcelImportPageState extends ConsumerState<ExcelImportPage> {
                       foregroundColor: tokens.textPrimary,
                     ),
                   ),
+                  SizedBox(height: tokens.space2),
+                  Text(
+                    '导入时按现有两级分类自动归类；只有无法识别的分类才会新建一级分类。',
+                    style: TextStyle(fontSize: 11, height: 1.4, color: tokens.textSecondary),
+                  ),
                   if (_parseError != null) ...[
                     SizedBox(height: tokens.space2),
                     Text(_parseError!, style: TextStyle(fontSize: 12, color: tokens.expense)),
