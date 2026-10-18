@@ -1,9 +1,10 @@
 # 安卓版记账App · 开发计划（v16 · 账户资产模型重构）
 
-> 状态：**方案 A 已确认**——按「账户 + 收入/支出流水（内部转账）」重构，旧 v15 卡片/周期/充值模型停止扩展；未动工，等「确认开始」。
+> 状态：**批次 0 已完成**——4 Tab 壳、主题令牌、drift 8 表、Repository、单测、Android debug APK 已跑通；下一步批次 1（资产页 + 账户 CRUD）。
 > 主设计：`doc/设计-账户资产模型.md` ｜ 视觉基准：`DESIGN.md`
-> 说明：v15 的 `设计-数据模型 / 卡片余额 / 删除联动 / UI架构 / 实现规格 / 交互规格` 仅作历史参考，按 v16 逐份重写后再恢复“定稿”。
+> 四份 v16 实现文档已重写：数据模型 / UI架构 / 实现规格 / 交互规格。
 > 原型状态：`记账-app/` 为 v15 历史原型；**v16 原型已建在 `记账-app-v16/`**（4 Tab + 资产/存单/记账 + 银行卡/储值卡/贷款添加编辑，金额输入 P0 已修复），用于 v16 视觉/交互验收。
+> Flutter 工程：`jizhang-flutter/`。**顶层目录使用 ASCII**，因为 Windows 下 Gradle/Flutter shader 编译器无法在非 ASCII 工程路径构建；`lib/` 内文件仍按中文命名约定。
 
 ---
 
@@ -143,7 +144,7 @@ lib/
 
 | 批次 | 内容 | 验收 |
 |---|---|---|
-| 0 | `flutter doctor` + 工程骨架（applicationId=com.self.jizhang）+ 主题令牌 + go_router 4 Tab Shell + v16 schema（8 表）+ Repository + 单测框架 + 中文命名 PoC | 编译通过；余额/转账/资产动作单测通过 |
+| 0 | ✅ `flutter doctor` + 工程骨架（applicationId=com.self.jizhang）+ 主题令牌 + go_router 4 Tab Shell + v16 schema（8 表）+ Repository + 单测框架 + 中文命名 PoC | ✅ `flutter analyze` 0 issue；`flutter test` 6/6；`flutter build apk --debug` 成功 |
 | 1 | 4 Tab 壳（首页/报表/资产/我的）+ 资产页：卡片/存单/贷款列表 + 添加账户 + 账户详情 | 账户 CRUD；余额正确 |
 | 2 | 记一笔：支出/收入（不出现转账）+ 账户过滤 + 金额（分）+ 日期 + 图片 + 首页流水 + 明细搜索/筛选 | 两类交易落库；内部转账不计收支 |
 | 3 | 储值卡（充值实付/赠送、消费、默认类别、余额核销）+ 信用卡（消费/还款/额度/账单日） | 充值/消费/还款余额与支出口径正确 |
@@ -191,6 +192,7 @@ lib/
 | `测试计划-v16.md` | **v16 测试计划 + 执行结果（114 PASS / 5 N/A）** |
 | `原型复查报告.md` | v15 问题清单 |
 | `../记账-app-v16/`（v16 原型） | 可运行；4 Tab + 资产/存单/记账 + 账户添加编辑 |
+| `../jizhang-flutter/`（Flutter 实现） | **批次 0 完成**；analyze/test/APK 通过 |
 
 ---
 
@@ -202,4 +204,4 @@ lib/
 
 ---
 
-**动工前提：① 用户明确说「确认开始」；② 批次 0 环境检查通过。**
+**批次 0 已完成（2026-10-18）：Flutter 3.38.8 / Android SDK 36.1.0 / licenses 已接受；`flutter analyze` 0 issue、`flutter test` 6/6、`flutter build apk --debug` 成功。下一批：批次 1 资产页 + 账户 CRUD。**
