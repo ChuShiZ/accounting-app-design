@@ -560,4 +560,73 @@ void main() {
     expect(await settings.get('default_account_id'), isNull);
     expect(await settings.get('category_tree_version'), '2');
   });
+
+  test('关联历史还款：保持剩余本金不变并生成内部回补', () async {
+    final bank = await accounts.createBankAccount(name: '工资卡', openingBalance: 1000000);
+    final loanId = await accounts.createLoanAccount(
+      name: '测试房贷',
+      kind: 'mortgage',
+      originalPrincipal: 73000000,
+      remainingPrincipal: 5000000,
+      rateBp: 300,
+      termMonths: 360,
+      startAt: DateTime(2024, 11, 21),
+      nextDueAt: DateTime(2026, 10, 19),
+      perAmount: 0,
+    );
+    final finance = (await categories.findByName('金融', 'expense'))!;
+    final mortgage = (await categories.findByName('房贷', 'expense'))!;
+    final insurance = (await categories.findByName('保险', 'expense'))!;
+    final first = await transactions.addExpense(
+      amount: 300000,
+      accountId: bank,
+      categoryId: finance.id,
+      occurredAt: DateTime(2026, 8, 20),
+      note: '月供',
+    );
+    final second = await transactions.addExpense(
+      amount: 200000,
+      accountId: bank,
+      categoryId: finance.id,
+      occurredAt: DateTime(2026, 9, 20),
+      note: '月供',
+    );
+    await transactions.addExpense(
+      amount: 50000,
+      accountId: bank,
+      categoryId: insurance.id,
+      occurredAt: DateTime(2026, 9, 25),
+      note: '保险',
+    );
+    await transactions.addExpense(
+      amount: 12345,
+      accountId: bank,
+      categoryId: (await categories.findByName('其他', 'expense'))!.id,
+      occurredAt: DateTime(2026, 9, 26),
+      note: '提前还款测试',
+    );
+
+    final candidates = await assets.loanRepaymentCandidates(loanId);
+    expect(candidates.where((candidate) => candidate.selectedByDefault).length, 2);
+    expect(candidates.any((candidate) => candidate.transaction.id == first), isTrue);
+    expect(candidates.any((candidate) => candidate.transaction.id == second), isTrue);
+    expect(candidates.every((candidate) => candidate.transaction.locked == false), isTrue);
+
+    final loanBefore = await accounts.findById(loanId);
+    final balanceBefore = await accounts.balanceOf(loanId);
+    final ids = candidates.where((candidate) => candidate.selectedByDefault).map((candidate) => candidate.transaction.id).toList();
+    final count = await assets.bindLoanRepayments(loanAccountId: loanId, transactionIds: ids);
+    expect(count, 2);
+    expect(await accounts.balanceOf(loanId), balanceBefore);
+
+    final loanAfter = await accounts.findById(loanId);
+    expect(loanAfter!.openingBalance, loanBefore!.openingBalance - 500000);
+    final all = await db.select(db.transactions).get();
+    final bound = all.where((row) => row.id == first || row.id == second).toList();
+    expect(bound.length, 2);
+    expect(bound.every((row) => row.locked && row.groupKind == 'loan_payment' && row.categoryId == mortgage.id), isTrue);
+    final internal = all.where((row) => row.groupKind == 'loan_payment' && row.type == 'income').toList();
+    expect(internal.length, 2);
+    expect(internal.every((row) => row.reportable == false && row.locked), isTrue);
+  });
 }

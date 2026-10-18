@@ -7,6 +7,7 @@ import '../数据/仓库/账户仓库.dart';
 import '../状态/提供者.dart';
 import '../主题/令牌.dart';
 import '账户展示.dart';
+import '关联贷款还款.dart';
 
 enum AccountDetailAction { edit, delete, recharge, repay, settleEarly, settleMaturity, renew }
 
@@ -199,6 +200,22 @@ class _AccountDetailSheet extends ConsumerWidget {
                   icon: const Icon(LucideIcons.plus, size: 18),
                   label: const Text('充值'),
                   style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+                ),
+                SizedBox(height: tokens.space2),
+              ],
+              if (account.type == 'loan') ...[
+                OutlinedButton.icon(
+                  onPressed: () async {
+                    final linked = await showLoanRepaymentLinkSheet(context, ref, view);
+                    if (linked != null && context.mounted) Navigator.of(context).pop();
+                  },
+                  icon: const Icon(LucideIcons.link2, size: 18),
+                  label: const Text('关联历史还款'),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(48),
+                    side: BorderSide(color: tokens.border),
+                    foregroundColor: tokens.primary,
+                  ),
                 ),
                 SizedBox(height: tokens.space2),
               ],

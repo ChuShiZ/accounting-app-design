@@ -25,6 +25,11 @@ final assetRepositoryProvider = Provider<AssetRepository>((ref) {
   return AssetRepository(ref.watch(databaseProvider));
 });
 
+final loanRepaymentCandidatesProvider =
+    FutureProvider.autoDispose.family<List<LoanRepaymentCandidate>, int>((ref, loanAccountId) {
+  return ref.watch(assetRepositoryProvider).loanRepaymentCandidates(loanAccountId);
+});
+
 final accountsProvider = FutureProvider.autoDispose<List<AccountWithBalance>>((ref) {
   return ref.watch(accountRepositoryProvider).listWithBalances();
 });

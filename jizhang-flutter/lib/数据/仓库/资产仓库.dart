@@ -5,6 +5,22 @@ import '交易仓库.dart';
 import '类别仓库.dart';
 import '账户仓库.dart';
 
+class LoanRepaymentCandidate {
+  const LoanRepaymentCandidate({
+    required this.transaction,
+    required this.categoryName,
+    required this.categoryIcon,
+    required this.accountName,
+    required this.selectedByDefault,
+  });
+
+  final TransactionRow transaction;
+  final String categoryName;
+  final String categoryIcon;
+  final String accountName;
+  final bool selectedByDefault;
+}
+
 /// 资产动作的领域规则：所有余额变化都由交易派生，不直接写余额。
 class AssetRepository {
   AssetRepository(this.db);
@@ -147,6 +163,100 @@ class AssetRepository {
         LoanDetailsCompanion(nextDueAt: Value(next.millisecondsSinceEpoch)),
       );
     });
+  }
+
+  /// 列出可关联到贷款的历史支出。
+  ///
+  /// 默认选中【金融】分类下的流水；备注含房贷/还款关键词的流水也列出，
+  /// 但默认不选，避免把信用卡还款等误关联。
+  Future<List<LoanRepaymentCandidate>> loanRepaymentCandidates(int loanAccountId) async {
+    final categories = await db.select(db.categories).get();
+    final accounts = await db.select(db.accounts).get();
+    final transactions = await db.select(db.transactions).get();
+    final categoryById = {for (final category in categories) category.id: category};
+    final accountById = {for (final account in accounts) account.id: account};
+    const financeNames = {'金融', '房贷', '车贷', '贷款'};
+    const noteKeywords = ['房贷', '还款', '浦发', '月供', '提前还'];
+    final result = <LoanRepaymentCandidate>[];
+    for (final transaction in transactions) {
+      if (transaction.type != 'expense' || transaction.locked || !transaction.reportable) continue;
+      if (transaction.groupKind == 'loan_payment') continue;
+      if (transaction.accountId == loanAccountId) continue;
+      final category = transaction.categoryId == null ? null : categoryById[transaction.categoryId];
+      final categoryHit = category != null && financeNames.contains(category.name);
+      final note = transaction.note ?? '';
+      final noteHit = noteKeywords.any(note.contains);
+      if (!categoryHit && !noteHit) continue;
+      result.add(LoanRepaymentCandidate(
+        transaction: transaction,
+        categoryName: category?.name ?? '其他',
+        categoryIcon: category?.icon ?? 'other',
+        accountName: accountById[transaction.accountId]?.name ?? '',
+        selectedByDefault: categoryHit,
+      ));
+    }
+    result.sort((a, b) => b.transaction.occurredAt.compareTo(a.transaction.occurredAt));
+    return result;
+  }
+
+  /// 把已有支出关联为贷款还款。
+  ///
+  /// 每笔支出生成一条非报表的内部收入“回补”贷款账户，保持现有余额口径；
+  /// 同时下调贷款初始欠款，确保当前剩余本金不被重复减少。
+  Future<int> bindLoanRepayments({
+    required int loanAccountId,
+    required List<int> transactionIds,
+  }) async {
+    if (transactionIds.isEmpty) throw ArgumentError('请选择要关联的流水');
+    final loan = await _accounts.loanDetailOf(loanAccountId);
+    final account = await _accounts.findById(loanAccountId);
+    if (loan == null || account == null) throw StateError('贷款账户不存在');
+    final ids = transactionIds.toSet();
+    final rows = await (db.select(db.transactions)..where((t) => t.id.isIn(ids))).get();
+    if (rows.length != ids.length) throw StateError('部分流水不存在');
+    for (final transaction in rows) {
+      if (transaction.type != 'expense') throw StateError('只能关联支出流水');
+      if (transaction.locked) throw StateError('已锁定的流水不能关联');
+      if (transaction.groupKind == 'loan_payment') throw StateError('流水已经关联过贷款还款');
+      if (transaction.accountId == loanAccountId) throw StateError('不能关联贷款账户自身的流水');
+    }
+    final total = rows.fold<int>(0, (sum, transaction) => sum + transaction.amount);
+    final categoryName = loan.kind == 'car' ? '车贷' : (loan.kind == 'mortgage' ? '房贷' : '贷款');
+    final categoryId = await _categoryId(categoryName, 'expense');
+    final now = DateTime.now().millisecondsSinceEpoch;
+    await db.transaction(() async {
+      for (final transaction in rows) {
+        final groupId = 'loan-legacy-$now-${transaction.id}';
+        await (db.update(db.transactions)..where((t) => t.id.equals(transaction.id))).write(
+          TransactionsCompanion(
+            categoryId: Value(categoryId),
+            groupId: Value(groupId),
+            groupKind: const Value('loan_payment'),
+            locked: const Value(true),
+            updatedAt: Value(now),
+          ),
+        );
+        await _tx.addIncome(
+          amount: transaction.amount,
+          accountId: loanAccountId,
+          categoryId: null,
+          occurredAt: DateTime.fromMillisecondsSinceEpoch(transaction.occurredAt),
+          note: '贷款余额回补（历史还款关联）',
+          groupId: groupId,
+          groupKind: 'loan_payment',
+          reportable: false,
+          locked: true,
+        );
+      }
+      // 历史还款已经反映在当前的初始欠款里，这里下调初始欠款以保持当前剩余本金不变。
+      await (db.update(db.accounts)..where((t) => t.id.equals(loanAccountId))).write(
+        AccountsCompanion(
+          openingBalance: Value(account.openingBalance - total),
+          updatedAt: Value(now),
+        ),
+      );
+    });
+    return rows.length;
   }
 
   Future<int> createDeposit({
