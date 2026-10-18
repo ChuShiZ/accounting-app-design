@@ -99,7 +99,7 @@ class _ExcelImportPageState extends ConsumerState<ExcelImportPage> {
                   ),
                   SizedBox(height: tokens.space2),
                   Text(
-                    '导入时按现有两级分类自动归类；只有无法识别的分类才会新建一级分类。',
+                    '导入时按现有两级分类自动归类；再次导入同一文件会更新已有流水的分类，不会重复新增。无法识别的分类才会新建一级分类。',
                     style: TextStyle(fontSize: 11, height: 1.4, color: tokens.textSecondary),
                   ),
                   if (_parseError != null) ...[
@@ -297,7 +297,7 @@ class _ExcelImportPageState extends ConsumerState<ExcelImportPage> {
         children: [
           Text('导入结果', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: tokens.textPrimary)),
           SizedBox(height: tokens.space2),
-          Text('成功 ${result.success} 条 · 重复 ${result.duplicates} 条 · 跳过 ${result.skipped} 条 · 新建类别 ${result.categoriesCreated} 个',
+          Text('成功 ${result.success} 条 · 更新分类 ${result.updated} 条 · 重复 ${result.duplicates} 条 · 跳过 ${result.skipped} 条 · 新建类别 ${result.categoriesCreated} 个',
               style: TextStyle(fontSize: 12, color: tokens.textSecondary, height: 1.5)),
           if (result.errors.isNotEmpty) ...[
             SizedBox(height: tokens.space1),

@@ -8,6 +8,7 @@ import 'excel解析.dart';
 class ExcelImportResult {
   const ExcelImportResult({
     required this.success,
+    required this.updated,
     required this.duplicates,
     required this.skipped,
     required this.errors,
@@ -16,13 +17,14 @@ class ExcelImportResult {
   });
 
   final int success;
+  final int updated;
   final int duplicates;
   final int skipped;
   final List<ExcelRowError> errors;
   final int categoriesCreated;
   final int totalRows;
 
-  int get processed => success + duplicates + skipped;
+  int get processed => success + updated + duplicates + skipped;
 }
 
 class ExcelImportService {
@@ -74,22 +76,27 @@ class ExcelImportService {
 
     final transactionRepository = TransactionRepository(db);
     final existingTransactions = await db.select(db.transactions).get();
-    final keys = <String>{
-      for (final transaction in existingTransactions)
-        _key(
-          transaction.occurredAt,
-          transaction.type,
-          transaction.amount,
-          transaction.categoryId ?? -1,
-          transaction.note ?? '',
-          transaction.accountId,
-        ),
-    };
+    final existingByKey = <String, TransactionRow>{};
+    final keys = <String>{};
+    for (final transaction in existingTransactions) {
+      final key = _baseKey(
+        transaction.occurredAt,
+        transaction.type,
+        transaction.amount,
+        transaction.note ?? '',
+        transaction.accountId,
+      );
+      existingByKey.putIfAbsent(key, () => transaction);
+      keys.add(key);
+    }
 
     var success = 0;
+    var updated = 0;
     var duplicates = 0;
     final errors = <ExcelRowError>[];
     final toInsert = <({ExcelParsedRow row, int accountId, int categoryId})>[];
+    final toUpdate = <({int transactionId, int categoryId})>[];
+    final handledExisting = <int>{};
     for (final row in rows) {
       final targetAccountId = row.accountName == null ? accountId : (accountByName[row.accountName] ?? accountId);
       final targetName = targetNameFor(row);
@@ -98,23 +105,39 @@ class ExcelImportService {
         errors.add(ExcelRowError(row.rowNumber, '类别创建失败'));
         continue;
       }
-      final key = _key(
+      final baseKey = _baseKey(
         row.occurredAt.millisecondsSinceEpoch,
         row.type,
         row.amount,
-        categoryId,
         row.note,
         targetAccountId,
       );
-      if (!keys.add(key)) {
+      final existing = existingByKey[baseKey];
+      if (existing != null) {
+        if (!handledExisting.add(existing.id)) {
+          duplicates++;
+          continue;
+        }
+        if (existing.categoryId == categoryId) {
+          duplicates++;
+        } else {
+          toUpdate.add((transactionId: existing.id, categoryId: categoryId));
+          updated++;
+        }
+        continue;
+      }
+      if (!keys.add(baseKey)) {
         duplicates++;
         continue;
       }
       toInsert.add((row: row, accountId: targetAccountId, categoryId: categoryId));
     }
 
-    if (toInsert.isNotEmpty) {
+    if (toUpdate.isNotEmpty || toInsert.isNotEmpty) {
       await db.transaction(() async {
+        for (final update in toUpdate) {
+          await transactionRepository.updateCategory(update.transactionId, update.categoryId);
+        }
         for (final item in toInsert) {
           final row = item.row;
           final note = row.note.isEmpty ? null : row.note;
@@ -142,6 +165,7 @@ class ExcelImportService {
 
     return ExcelImportResult(
       success: success,
+      updated: updated,
       duplicates: duplicates,
       skipped: parseErrors.length + errors.length,
       errors: [...parseErrors, ...errors],
@@ -150,8 +174,8 @@ class ExcelImportService {
     );
   }
 
-  String _key(int occurredAt, String type, int amount, int categoryId, String note, int accountId) {
-    return '$occurredAt|$type|$amount|$categoryId|${note.trim()}|$accountId';
+  String _baseKey(int occurredAt, String type, int amount, String note, int accountId) {
+    return '$occurredAt|$type|$amount|${note.trim()}|$accountId';
   }
 
   String _iconForCategory(String name) {

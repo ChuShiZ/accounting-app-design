@@ -139,6 +139,12 @@ class TransactionRepository {
         .get();
   }
 
+  Future<void> updateCategory(int id, int? categoryId) {
+    return (db.update(db.transactions)..where((t) => t.id.equals(id))).write(
+      TransactionsCompanion(categoryId: Value(categoryId)),
+    );
+  }
+
   Future<void> deleteById(int id) {
     return (db.delete(db.transactions)..where((t) => t.id.equals(id))).go();
   }

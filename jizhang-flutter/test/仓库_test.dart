@@ -500,4 +500,37 @@ void main() {
     final rows = await db.select(db.transactions).get();
     expect(rows.map((row) => names[row.categoryId]).toSet(), {'餐饮', '加油', '水果', '礼金'});
   });
+
+  test('Excel 重新导入时更新已有流水分类而不是重复新增', () async {
+    final bank = await accounts.createBankAccount(name: '导入卡', openingBalance: 0);
+    final other = (await categories.findByName('其他', 'expense'))!;
+    final at = DateTime(2026, 10, 18, 8);
+    await transactions.addExpense(
+      amount: 1600,
+      accountId: bank,
+      categoryId: other.id,
+      occurredAt: at,
+      note: '家常菜',
+    );
+    final result = await ExcelImportService(db).importRows(
+      accountId: bank,
+      rows: [
+        ExcelParsedRow(
+          rowNumber: 2,
+          occurredAt: at,
+          type: 'expense',
+          category: '早午晚餐',
+          note: '家常菜',
+          amount: 1600,
+        ),
+      ],
+    );
+    expect(result.success, 0);
+    expect(result.updated, 1);
+    expect(result.duplicates, 0);
+    final rows = await db.select(db.transactions).get();
+    expect(rows.length, 1);
+    final food = (await categories.findByName('餐饮', 'expense'))!;
+    expect(rows.single.categoryId, food.id);
+  });
 }
